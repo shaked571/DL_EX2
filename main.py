@@ -1,5 +1,10 @@
 import argparse
 from tagger import MLP
+# Differnt schemes of training - { MLP + size of matrix
+# batch size (hyper paraeter - is there nore?)
+# lr
+# optimizer
+# hidden dim
 
 
 def main(train_path, test_path, part, batch_size, hidden_dim):
