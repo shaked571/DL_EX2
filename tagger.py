@@ -1,3 +1,6 @@
+from dataclasses import dataclass
+from typing import List, Optional
+
 import torch
 from torch import nn
 import numpy as np
@@ -26,20 +29,65 @@ import os
 # Add a function that create a file name for each run
 #
 #
+@dataclass
+class InputExample:
+    """
+    A single training/test example for token classification.
+    Args:
+        guid: Unique id for the example.
+        words: list. The words of the sequence.
+        labels: (Optional) list. The labels for each word of the sequence. This should be
+        specified for train and dev examples, but not for test examples.
+    """
+    guid: str
+    words: List[str]
+    labels: Optional[List[str]]
 
-class Parser:
-    def __init__(self, path: str, pre_processor: PreProcessor):
-        self.path = path
-        self.data = self.read_file(self.path)
-        self.
-        self.vocab =
-        self.tags =
-        self.i2word =
+class DataFile:
+    def __init__(self, data_dir: str,mode: str,  pre_processor: PreProcessor):
+        self.data_dir = data_dir
+        self.mode = mode
+        self.pre_processor = pre_processor
+        self.data:List[InputExample] = self.read_examples_from_file()
+
+
+
+    def read_examples_from_file(self):
+        file_path = os.path.join(self.data_dir, self.mode)
+        guid_index = 1
+        examples = []
+        with open(file_path, encoding="utf-8") as f:
+            words = []
+            labels = []
+            for line in f:
+                if line.startswith("-DOCSTART-") or line == "" or line == "\n":
+                    if words:
+                        examples.append(InputExample(guid=f"{self.mode}-{guid_index}", words=words, labels=labels))
+                        guid_index += 1
+                        words = []
+                        labels = []
+                else:
+                    splits = line.split(" ")
+                    words.append(self.pre_processor.process(splits[0]))
+                    if len(splits) > 1:
+                        labels.append(splits[-1].replace("\n", ""))
+                    else:
+                        # Examples could have no label for mode = "test"
+                        labels.append("O")
+            if words:
+                examples.append(InputExample(guid=f"{self.mode}-{guid_index}", words=words, labels=labels))
+        return examples
+
+
+
+'''
+class Vocab:
+    def __init__(self):
+        self.i2word = 
         self.word2i =
 
-    def read_file(self, path):
-        pass
-
+    def build_vocab(self):
+'''
 
 class MLP(nn.Module):
     PATH = os.path.join(
@@ -84,13 +132,13 @@ class MLP(nn.Module):
 
 
 
-class MLP:
-    CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
-    def __init__(self, embedding_size, vocab_size,load_embedding=False):#TODO what are the flgs?
-
-        self.loss = nn.CrossEntropyLoss()
-        self.mlp1 = nn.MulLP
-
-
-
-    def model(self):
+# class MLP:
+#     CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
+#     def __init__(self, embedding_size, vocab_size,load_embedding=False):#TODO what are the flgs?
+#
+#         self.loss = nn.CrossEntropyLoss()
+#         self.mlp1 = nn.MulLP
+#
+#
+#
+#     def model(self):
