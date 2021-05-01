@@ -17,5 +17,13 @@ class PreProcessor(abc.ABC):
 
 class LowerProcess(PreProcessor):
 
-    def process(self, sent):
-        return [s.lower().strip() for s in sent]
+    def process(self, w:str):
+        return w.lower()
+
+
+class TitleProcess(PreProcessor):
+
+    def process(self, w:str):
+        if w.islower():
+            return w
+        return w.title()
