@@ -155,23 +155,32 @@ class MLP(nn.Module):
             self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)
 
         self.layers = nn.Sequential(
-                    # self.embedding,
-                    nn.Linear(self.embed_dim, self.hidden_dim),
+                    # self.embedding, # TODO should we remove it?
+                    nn.Linear(self.embed_dim*5, self.hidden_dim), # TODO the dimension updated
                     nn.Tanh(),
                     nn.Linear(self.hidden_dim, self.vocab.num_of_labels)
                 )
 
+    # def get_embed_vector(self, window):
+    #     window_indexes = [vocab.word2i[word[0]] for word in window]
+    #     lookup_tensor = torch.tensor(window_indexes, dtype=torch.long)
+    #     embed_window = self.embedding(lookup_tensor)
+    #     return embed_window
+
     def get_embed_vector(self, window):
-        window_indexes = [vocab.word2i[word[0]] for word in window]
-        lookup_tensor = torch.tensor(window_indexes, dtype=torch.long)
-        embed_window = self.embedding(lookup_tensor)
+        embed_window = []
+        for word in window:
+            # window_indexes = [vocab.word2i[word[0]] for word in window]
+            lookup_tensor = torch.tensor([vocab.word2i[word[0]]], dtype=torch.long)
+            embed_window.append(self.embedding(lookup_tensor))
+        embed_window = torch.cat(tuple(embed_window), 1)
         return embed_window
 
     def forward(self, x):
         # output = self.embedding(x)
         # convert tensor (128, 1, 28, 28) --> (128, 1*28*28)
         # x = self.get_embed_vector(x).to(torch.long)
-        x = self.get_embed_vector(x)
+        # x = self.get_embed_vector(x)
         x = x.view(x.size(0), -1)
         x = self.layers(x)
         return x
@@ -192,21 +201,22 @@ class Tranier:
     def train(self):
         # initialize tracker for minimum validation loss
         valid_loss_min = np.Inf # set initial "min" to infinity
+        # monitor training loss
+        train_loss = 0.0
+        valid_loss = 0.0
 
         for epoch in range(self.n_epochs):
-            # monitor training loss
-            train_loss = 0.0
-            valid_loss = 0.0
-
             ###################
             # train the model #
             ###################
+            print(f"start epoch: {epoch + 1}")
             self.model.train() # prep model for training
-            for data, target in self.data_loader:
+            for i, (data, target) in enumerate(self.data_loader):
                 # clear the gradients of all optimized variables
                 self.optimizer.zero_grad()
                 # forward pass: compute predicted outputs by passing inputs to the model
-                output = model(data)
+                embed_data = model.get_embed_vector(data)
+                output = model(embed_data)
                 # calculate the loss
                 loss = self.loss_func(output, torch.tensor([vocab.label2i[target[0]]]))
                 # backward pass: compute gradient of the loss with respect to model parameters
@@ -214,7 +224,10 @@ class Tranier:
                 # perform a single optimization step (parameter update)
                 self.optimizer.step()
                 # update running training loss
-                train_loss += loss.item()*data.size(0)
+                train_loss += loss.item()*embed_data.size(0)
+                if i % 1000 == 0:
+                    print(f"example number: {i + 1}")
+            print(f"in epoch: {epoch + 1} train loss: {train_loss}")
 
 
 if __name__ == '__main__':
