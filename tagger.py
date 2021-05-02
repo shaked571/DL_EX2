@@ -109,23 +109,26 @@ class DataFile(Dataset):
 
 
 class Vocab:
-    UNIQUE_WORD = "UUUNKKK"
+    UNKNOWN_WORD = "UUUNKKK"
 
     def __init__(self, train_file: DataFile):
         self.data_file = train_file
         self.words, self.labels = self.unique_words(self.data_file)
         self.vocab_size = len(self.words)
         self.num_of_labels = len(self.labels)
-        self.i2word = {i: w for i, w in enumerate(self.words)}
+        self.i2word = {i: w for i, w in enumerate(self.words)}    # TODO make the indexes according to the vocab.txt file
         self.word2i = {w: i for i, w in self.i2word.items()}
+        self.i2label = {i: l for i, l in enumerate(self.labels)}
+        self.label2i = {l: i for i, l in self.i2label.items()}
 
     def unique_words(self, data_file: DataFile) -> Tuple[set, set]:
         uniq_words = set()
         uniq_labels = set()
         for example in data_file.data:
-            uniq_words.update(set(example.words))
-            uniq_labels.update(set(example.label))
-        uniq_words.add(self.UNIQUE_WORD) # Adding the unique word
+            uniq_words.update(example.words)
+            uniq_labels.add(example.label)
+        # Adding the unknown word
+        uniq_words.add(self.UNKNOWN_WORD)
         return uniq_words, uniq_labels
 
 
@@ -136,7 +139,7 @@ class MLP(nn.Module):
     def __init__(self, embedding_size: int, hidden_dim: int, vocab: Vocab, load_embedding=False):
         super(MLP, self).__init__()
         self.vocab = vocab
-        self.hidden_dim  = hidden_dim
+        self.hidden_dim = hidden_dim
         if load_embedding:
             self.embed_dim = 50
             self.vocab_size = 0 # TODO from read embeddinf
@@ -152,15 +155,23 @@ class MLP(nn.Module):
             self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)
 
         self.layers = nn.Sequential(
-                    self.embedding,
+                    # self.embedding,
                     nn.Linear(self.embed_dim, self.hidden_dim),
                     nn.Tanh(),
                     nn.Linear(self.hidden_dim, self.vocab.num_of_labels)
                 )
 
+    def get_embed_vector(self, window):
+        window_indexes = [vocab.word2i[word[0]] for word in window]
+        lookup_tensor = torch.tensor(window_indexes, dtype=torch.long)
+        embed_window = self.embedding(lookup_tensor)
+        return embed_window
+
     def forward(self, x):
         # output = self.embedding(x)
         # convert tensor (128, 1, 28, 28) --> (128, 1*28*28)
+        # x = self.get_embed_vector(x).to(torch.long)
+        x = self.get_embed_vector(x)
         x = x.view(x.size(0), -1)
         x = self.layers(x)
         return x
@@ -169,11 +180,13 @@ class MLP(nn.Module):
 
 
 class Tranier:
-    def __init__(self, model: nn.Module, data: Dataset, n_ep, ): #optimizer,lr
+    # def __init__(self, model: nn.Module, data: DataFile, n_ep, ): #optimizer,lr
+    def __init__(self, model: nn.Module, vocab: Vocab, n_ep, ): #optimizer,lr
         self.model = model
         self.n_epochs = n_ep
         self.optimizer = optim.SGD(model.parameters(), lr=0.01)
-        self.data_loader = DataLoader(data, batch_size=1)
+        # self.data_loader = DataLoader(data, batch_size=1)
+        self.data_loader = DataLoader(vocab.data_file, batch_size=1)
         self.loss_func = nn.CrossEntropyLoss()
 
     def train(self):
@@ -195,7 +208,7 @@ class Tranier:
                 # forward pass: compute predicted outputs by passing inputs to the model
                 output = model(data)
                 # calculate the loss
-                loss = self.loss_func(output, target)
+                loss = self.loss_func(output, torch.tensor([vocab.label2i[target[0]]]))
                 # backward pass: compute gradient of the loss with respect to model parameters
                 loss.backward()
                 # perform a single optimization step (parameter update)
@@ -211,5 +224,6 @@ if __name__ == '__main__':
     test = DataFile(os.path.join('data','ner'), 'test', pp)
     vocab = Vocab(train)
     model = MLP(50, 100, vocab)
-    trainer = Tranier(model, train, 2)
+    # trainer = Tranier(model, train, 2)
+    trainer = Tranier(model, vocab, 2)
     trainer.train()
