@@ -199,6 +199,8 @@ class Tranier:
         self.loss_func = nn.CrossEntropyLoss()
 
     def train(self):
+        #  TODO move heer the data and model to 'device'
+
         # initialize tracker for minimum validation loss
         valid_loss_min = np.Inf # set initial "min" to infinity
         # monitor training loss
@@ -210,6 +212,7 @@ class Tranier:
             # train the model #
             ###################
             print(f"start epoch: {epoch + 1}")
+
             self.model.train() # prep model for training
             for i, (data, target) in enumerate(self.data_loader):
                 # clear the gradients of all optimized variables
@@ -228,6 +231,9 @@ class Tranier:
                 if i % 1000 == 0:
                     print(f"example number: {i + 1}")
             print(f"in epoch: {epoch + 1} train loss: {train_loss}")
+            #  TODO add  here a full run on dev set.
+            #  TODO save model states with epoch i. togethere with loss
+            #  TODO add loss dev, loss train, accuracy to the tensorboard
 
 
 if __name__ == '__main__':
