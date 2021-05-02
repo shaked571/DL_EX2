@@ -48,13 +48,15 @@ class InputExample:
     words: List[str]
     label: Optional[str]
 
+
 class DataFile(Dataset):
-    def __init__(self, data_dir: str,mode: str,  pre_processor: PreProcessor):
+    WINDOW_SIZE = 5
+
+    def __init__(self, data_dir: str, mode: str,  pre_processor: PreProcessor):
         self.data_dir = data_dir
         self.mode = mode
         self.pre_processor = pre_processor
         self.data: List[InputExample] = self.read_examples_from_file()
-
 
     def read_sents(self, lines):
         sentences = []
@@ -83,8 +85,8 @@ class DataFile(Dataset):
             else:
                 sent = [["<s>", 'O'], ["<s>", 'O']] + sent + [["</s>", 'O'], ["</s>", 'O']]
 
-            for i in range(len(sent) - 5 + 1):
-                batch = sent[i:i+5]
+            for i in range(len(sent) - self.WINDOW_SIZE + 1):
+                batch = sent[i:i+self.WINDOW_SIZE]
                 words = []
                 labels = []
                 for word_label in batch:
@@ -99,28 +101,25 @@ class DataFile(Dataset):
             guid_index += 1
         return examples
 
-
     def __getitem__(self, index) -> T_co:
-        return self.data[index]
+        return self.data[index].words, self.data[index].label
 
     def __len__(self):
         return len(self.data)
 
 
-
 class Vocab:
     UNIQUE_WORD = "UUUNKKK"
+
     def __init__(self, train_file: DataFile):
         self.data_file = train_file
         self.words, self.labels = self.unique_words(self.data_file)
         self.vocab_size = len(self.words)
         self.num_of_labels = len(self.labels)
-        self.i2word = {i: w for i,w in enumerate(self.words)}
+        self.i2word = {i: w for i, w in enumerate(self.words)}
         self.word2i = {w: i for i, w in self.i2word.items()}
 
-
-
-    def unique_words(self, data_file:DataFile)-> Tuple[set, set]:
+    def unique_words(self, data_file: DataFile) -> Tuple[set, set]:
         uniq_words = set()
         uniq_labels = set()
         for example in data_file.data:
@@ -132,9 +131,9 @@ class Vocab:
 
 class MLP(nn.Module):
     PATH = os.path.join(
-        os.path.abspath(os.path.dirname(__file__)), 'data','wordVectors.txt') #TODO maybe give an option flag
+        os.path.abspath(os.path.dirname(__file__)), 'data', 'wordVectors.txt') #TODO maybe give an option flag
 
-    def __init__(self, embedding_size:int, hidden_dim:int, vocab:Vocab, load_embedding=False):
+    def __init__(self, embedding_size: int, hidden_dim: int, vocab: Vocab, load_embedding=False):
         super(MLP, self).__init__()
         self.vocab = vocab
         self.hidden_dim  = hidden_dim
@@ -159,18 +158,15 @@ class MLP(nn.Module):
                     nn.Linear(self.hidden_dim, self.vocab.num_of_labels)
                 )
 
-
     def forward(self, x):
-
-        output = self.embedding(x)
-
+        # output = self.embedding(x)
         # convert tensor (128, 1, 28, 28) --> (128, 1*28*28)
         x = x.view(x.size(0), -1)
         x = self.layers(x)
         return x
 
-
     # def transform_input(self, input: List[List[str]])-> torch.Tensor:
+
 
 class Tranier:
     def __init__(self, model: nn.Module, data: Dataset, n_ep, ): #optimizer,lr
@@ -178,7 +174,7 @@ class Tranier:
         self.n_epochs = n_ep
         self.optimizer = optim.SGD(model.parameters(), lr=0.01)
         self.data_loader = DataLoader(data, batch_size=1)
-        self.loss = nn.CrossEntropyLoss()
+        self.loss_func = nn.CrossEntropyLoss()
 
     def train(self):
         # initialize tracker for minimum validation loss
@@ -199,25 +195,21 @@ class Tranier:
                 # forward pass: compute predicted outputs by passing inputs to the model
                 output = model(data)
                 # calculate the loss
-                loss = criterion(output, target)
+                loss = self.loss_func(output, target)
                 # backward pass: compute gradient of the loss with respect to model parameters
                 loss.backward()
                 # perform a single optimization step (parameter update)
-                optimizer.step()
+                self.optimizer.step()
                 # update running training loss
                 train_loss += loss.item()*data.size(0)
 
 
-
-
-
-
 if __name__ == '__main__':
     pp = TitleProcess()
-    train = DataFile(os.path.join('data','ner'), 'train', pp )
-    dev = DataFile(os.path.join('data','ner'), 'dev', pp )
-    test = DataFile(os.path.join('data','ner'), 'test', pp )
+    train = DataFile(os.path.join('data','ner'), 'train', pp)
+    dev = DataFile(os.path.join('data','ner'), 'dev', pp)
+    test = DataFile(os.path.join('data','ner'), 'test', pp)
     vocab = Vocab(train)
-    model = MLP(50, 100,vocab)
-    trainer = Tranier(model,train, 2)
+    model = MLP(50, 100, vocab)
+    trainer = Tranier(model, train, 2)
     trainer.train()
