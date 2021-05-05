@@ -3,7 +3,7 @@ from datetime import datetime
 
 from tqdm import tqdm
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, T_co
+from typing import List, Optional, T_co
 from torch.utils.tensorboard import SummaryWriter
 
 import torch
@@ -12,7 +12,7 @@ from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
 import numpy as np
-from  preprocessing import LowerProcess, PreProcessor, TitleProcess
+from preprocessing import PreProcessor
 import os
 
 # Read the files
@@ -35,13 +35,13 @@ import os
 #                               3.2 Building the CNN architecture - Max pooling, filters etc.
 # saving all the loss to a tensorboardX + Adduracy and Recall
 # Add a function that create a file name for each run
-#
-#
+
+
 class Vocab:
     UNKNOWN_WORD = "UUUNKKK"
 
-    def __init__(self, dir_path: str):
-        self.train_path = os.path.join(dir_path, "train")
+    def __init__(self, train_path: str):
+        self.train_path = train_path
         self.words, self.labels = self.get_unique(self.train_path)
         self.vocab_size = len(self.words)
         self.num_of_labels = len(self.labels)
@@ -66,9 +66,6 @@ class Vocab:
         return words, labels
 
 
-    # model.get_embed_vector(data)
-
-
 @dataclass
 class InputExample:
     """
@@ -86,9 +83,8 @@ class InputExample:
 class DataFile(Dataset):
     WINDOW_SIZE = 5
 
-    def __init__(self, data_dir: str, mode: str,  pre_processor: PreProcessor, vocab: Vocab):
-        self.data_dir = data_dir
-        self.mode: str = mode
+    def __init__(self, data_path: str, pre_processor: PreProcessor, vocab: Vocab):
+        self.data_path = data_path
         self.pre_processor: PreProcessor = pre_processor
         self.vocab: Vocab = vocab
         self.data: List[InputExample] = self.read_examples_from_file()
@@ -106,11 +102,10 @@ class DataFile(Dataset):
         return sentences
 
     def read_examples_from_file(self):
-        file_path = os.path.join(self.data_dir, self.mode)
         guid_index = 1
         sent_index = 0
         examples = []
-        with open(file_path, encoding="utf-8") as f:
+        with open(self.data_path, encoding="utf-8") as f:
             lines = f.readlines()
 
         sents = self.read_sents(lines)
@@ -131,7 +126,7 @@ class DataFile(Dataset):
                     else:
                         # Examples could have no label for mode = "test"
                         labels.append("O")
-                examples.append(InputExample(guid=f"{self.mode}-{guid_index}-{sent_index}", words=words, label=labels[2]))
+                examples.append(InputExample(guid=f"{self.data_path}-{guid_index}-{sent_index}", words=words, label=labels[2]))
                 sent_index += 1
             guid_index += 1
         return examples
@@ -151,7 +146,6 @@ class DataFile(Dataset):
 
     def __len__(self):
         return len(self.data)
-
 
 
 class MLP(nn.Module):
@@ -206,17 +200,13 @@ class MLP(nn.Module):
 
         return out
 
-    # def transform_input(self, input: List[List[str]])-> torch.Tensor:
-
 
 class Tranier:
-    # def __init__(self, model: nn.Module, data: DataFile, n_ep, ): #optimizer,lr
     def __init__(self, model: nn.Module, train_data: DataFile, dev_data: DataFile,
                  vocab: Vocab,
                  n_ep=1,
                  train_batch_size=8,
-                 to_shuffle=True,
-                 steps_to_eval = 4000,
+                 steps_to_eval=4000,
                  lr=0.01):
         self.model = model
         self.dev_batch_size = 128
@@ -225,17 +215,17 @@ class Tranier:
 
         self.vocab = vocab
         self.optimizer = optim.SGD(model.parameters(), lr=lr)
-
+        self.steps_to_eval = steps_to_eval
         self.n_epochs = n_ep
         self.loss_func = nn.CrossEntropyLoss()
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
-        self.model_args = {"lr": lr, "epoch":self.n_epochs,
-                      "shuffle": to_shuffle,
-                      "batch_size": train_batch_size,
-                      }
-        self.writer = SummaryWriter(log_dir=f"tensor_board/{self.suffix_run()}_{datetime.now().strftime('%d_ %H_%M_%S')}")
-
+        self.model_args = {"lr": lr,
+                           "epoch": self.n_epochs,
+                           "batch_size": train_batch_size,
+                           "steps_to_eval": self.steps_to_eval
+                           }
+        self.writer = SummaryWriter(log_dir=f"tensor_board/{self.suffix_run()}")
 
     def train(self):
         # initialize tracker for minimum validation loss
@@ -257,7 +247,7 @@ class Tranier:
                 # clear the gradients of all optimized variables
                 self.optimizer.zero_grad()
                 # forward pass: compute predicted outputs by passing inputs to the model
-                output = model(data) # Eemnded Data Tensor size (1,5)
+                output = self.model(data) # Eemnded Data Tensor size (1,5)
                 # calculate the loss
                 loss = self.loss_func(output, target.view(-1))
                 # backward pass: compute gradient of the loss with respect to model parameters
@@ -278,13 +268,13 @@ class Tranier:
             self.evaluate_model(epoch, "epoch")
 
     def evaluate_model(self, step, stage):
-        model.eval()
+        self.model.eval()
         loss = 0
         correct = 0
         for eval_step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data),
                                               desc=f"dev step {step} loop"):
             data = data.to(self.device)
-            output = model(data)
+            output = self.model(data)
 
             loss = self.loss_func(output, target.view(-1))
             loss += loss.item() * data.size(0)
@@ -294,7 +284,7 @@ class Tranier:
         print(f'Accuracy/dev_{stage}: {accuracy}' )
         self.writer.add_scalar(f'Accuracy/dev_{stage}', accuracy)
         self.writer.add_scalar(f'Loss/dev_{stage}', loss, step )
-        model.train()
+        self.model.train()
 
     def suffix_run(self):
         res = ""
@@ -304,13 +294,14 @@ class Tranier:
         return res
 
 
-if __name__ == '__main__':
-    title_process = TitleProcess()
-    vocab = Vocab(os.path.join('data','ner'))
-    train_df = DataFile(os.path.join('data','ner'), 'train', title_process, vocab)
-    dev_df = DataFile(os.path.join('data','ner'), 'dev', title_process,  vocab)
-    test_df = DataFile(os.path.join('data','ner'), 'test', title_process,  vocab)
-    model = MLP(50, 100, vocab) #define how the network looks like
-    # trainer = Tranier(model, train, 2)
-    trainer = Tranier(model, train_df, dev_df,  vocab, 10)
-    trainer.train()
+# if __name__ == '__main__':
+#     title_process = TitleProcess()
+#     vocab = Vocab(os.path.join('data','ner'))
+#     # train_df = DataFile(os.path.join('data','ner'), 'train', title_process, vocab)
+#     train_df = DataFile('data/ner/train', title_process, vocab)
+#     dev_df = DataFile('data/ner/dev', title_process,  vocab)
+#     test_df = DataFile('data/ner/test', title_process,  vocab)
+#     model = MLP(50, 100, vocab) #define how the network looks like
+#     # trainer = Tranier(model, train, 2)
+#     trainer = Tranier(model, train_df, dev_df,  vocab, 10)
+#     trainer.train()
