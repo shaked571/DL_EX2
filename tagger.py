@@ -39,20 +39,42 @@ import os
 
 class Vocab:
     UNKNOWN_WORD = "UUUNKKK"
-    base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
-    def __init__(self, task: str):
-        print("*"*100)
-        print(self.base_path)
-        self.train_path = os.path.join(self.base_path, task, 'train')
-        print(f"train path: {self.train_path}")
-        print("*"*100)
-        self.words, self.labels = self.get_unique(self.train_path)
+    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
+    VOCAB_PATH = os.path.join(BASE_PATH, 'vocab.txt')
+
+    def __init__(self, task: str, word2vec):
+        self.word2vec = word2vec
+        self.train_path = os.path.join(self.BASE_PATH, task, 'train')
+        if self.word2vec:
+            _, self.labels = self.get_unique(self.train_path)
+            self.words = self.get_word2vec_words()
+        else:
+            self.words, self.labels = self.get_unique(self.train_path)
+
         self.vocab_size = len(self.words)
         self.num_of_labels = len(self.labels)
-        self.i2word = {i: w for i, w in enumerate(self.words)}    # TODO make the indexes according to the vocab.txt file
+        self.i2word = {i: w for i, w in enumerate(self.words)}
         self.word2i = {w: i for i, w in self.i2word.items()}
         self.i2label = {i: l for i, l in enumerate(self.labels)}
         self.label2i = {l: i for i, l in self.i2label.items()}
+
+    def get_word_index(self, word):
+        if self.word2vec:
+            word = word.lower()
+
+        if word in self.word2i:
+            return self.word2i[word]
+
+        return self.word2i[self.UNKNOWN_WORD]
+
+    def get_word2vec_words(self):
+        vocab = []
+        with open(self.VOCAB_PATH) as f:
+            lines = f.readlines()
+        for line in lines:
+            word = line.strip()
+            vocab.append(word)
+        return vocab
 
     def get_unique(self, path):
         words = set()
@@ -86,14 +108,10 @@ class InputExample:
 
 class DataFile(Dataset):
     WINDOW_SIZE = 5
-    base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
+    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
     def __init__(self, task: str, data_set, pre_processor: PreProcessor, vocab: Vocab):
-        print("*"*100)
-        print(self.base_path)
-        self.data_path = os.path.join(self.base_path, task, data_set)
-        print(f"data path: {self.data_path}")
-        print("*"*100)
+        self.data_path = os.path.join(self.BASE_PATH, task, data_set)
         self.pre_processor: PreProcessor = pre_processor
         self.vocab: Vocab = vocab
         self.data: List[InputExample] = self.read_examples_from_file()
@@ -140,16 +158,11 @@ class DataFile(Dataset):
             guid_index += 1
         return examples
 
-    def get_word_index(self, word):
-        if word in self.vocab.word2i:
-            return self.vocab.word2i[word]
-        return self.vocab.word2i[self.vocab.UNKNOWN_WORD]
-
     def __getitem__(self, index) -> T_co:
         words = self.data[index].words
         label = self.data[index].label
-        words_tensor = torch.Tensor([self.get_word_index(w) for w in words]).to(torch.int64)
-        label_tensor = torch.Tensor([self.vocab.label2i[label]]).to(torch.int64)
+        words_tensor = torch.tensor([self.vocab.get_word_index(w) for w in words]).to(torch.int64)
+        label_tensor = torch.tensor([self.vocab.label2i[label]]).to(torch.int64)
 
         return words_tensor, label_tensor
 
@@ -158,47 +171,24 @@ class DataFile(Dataset):
 
 
 class MLP(nn.Module):
-    PATH = os.path.join(
-        os.path.abspath(os.path.dirname(__file__)), 'data', 'wordVectors.txt') #TODO maybe give an option flag
+    PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data', 'wordVectors.txt')
 
-    def __init__(self, embedding_size: int, hidden_dim: int, vocab: Vocab, load_embedding=False):
+    def __init__(self, embedding_size: int, hidden_dim: int, vocab: Vocab):
         super(MLP, self).__init__()
         self.vocab = vocab
         self.hidden_dim = hidden_dim
-        if load_embedding:
-            self.embed_dim = 50
-            self.vocab_size = 0 # TODO from read embeddinf
-            #code to load embedinng
-            #init embediing using load
+        self.vocab_size = self.vocab.vocab_size
+        self.embed_dim = embedding_size
+        self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)
+
+        # init embedding using word2vec
+        if self.vocab.word2vec:
             weights = np.loadtxt(self.PATH)
-            self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)
             self.embedding.weight.data.copy_(torch.from_numpy(weights))
-        else:
-            self.embed_dim = embedding_size
-            #init embediing using randomly
-            self.vocab_size = self.vocab.vocab_size
-            self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)
 
-            self.linear1 = nn.Linear(self.embed_dim * 5, self.hidden_dim)
-            self.tanh = nn.Tanh()
-            self.linear2 = nn.Linear(self.hidden_dim, self.vocab.num_of_labels)
-
-
-    # def get_embed_vector(self, window):
-    #     window_indexes = [vocab.word2i[word[0]] for word in window]
-    #     lookup_tensor = torch.tensor(window_indexes, dtype=torch.long)
-    #     embed_window = self.embedding(lookup_tensor)
-    #     return embed_window
-    #
-    #
-    # def get_embed_vector(self, window):
-    #     embed_window = []
-    #     for word in window:
-    #         # window_indexes = [vocab.word2i[word[0]] for word in window]
-    #         lookup_tensor = torch.tensor([vocab.word2i[word[0]]], dtype=torch.long)
-    #         embed_window.append(self.embedding(lookup_tensor))
-    #     embed_window = torch.cat(tuple(embed_window), 1)
-    #     return embed_window
+        self.linear1 = nn.Linear(self.embed_dim * 5, self.hidden_dim)
+        self.tanh = nn.Tanh()
+        self.linear2 = nn.Linear(self.hidden_dim, self.vocab.num_of_labels)
 
     def forward(self, x):
         out = self.embedding(x)
@@ -210,7 +200,7 @@ class MLP(nn.Module):
         return out
 
 
-class Tranier:
+class Trainer:
     def __init__(self, model: nn.Module, train_data: DataFile, dev_data: DataFile,
                  vocab: Vocab,
                  n_ep=1,
