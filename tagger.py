@@ -94,6 +94,7 @@ class Vocab:
         self.word2i = {w: i for i, w in self.i2word.items()}
         self.i2label = {i: l for i, l in enumerate(self.labels)}
         self.label2i = {l: i for i, l in self.i2label.items()}
+        self.task = task
 
     def get_word_index(self, word):
         if self.word2vec:
@@ -259,7 +260,7 @@ class Trainer:
         self.loss_func = nn.CrossEntropyLoss()
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
-        self.model_args = {"lr": lr, "epoch": self.n_epochs, "batch_size": train_batch_size,
+        self.model_args = {"task":self.vocab.task ,"lr": lr, "epoch": self.n_epochs, "batch_size": train_batch_size,
                            "steps_to_eval": self.steps_to_eval}
         self.writer = SummaryWriter(log_dir=f"tensor_board/{self.suffix_run()}")
 
