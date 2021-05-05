@@ -37,6 +37,42 @@ import os
 # Add a function that create a file name for each run
 
 
+class SubWords:
+    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
+    SUB_WORD_SIZE = 3
+    SHORT_SUB_WORD = "SHORT"
+
+    def __init__(self, task: str):
+        self.train_path = os.path.join(self.BASE_PATH, task, 'train')
+        self.suffix, self.prefix = self.get_prefix_and_suffix()
+        self.suffix2i = {s: i for i, s in enumerate(self.suffix)}
+        self.i2suffix = {i: s for i, s in enumerate(self.suffix)}
+        self.prefix2i = {p: i for i, p in enumerate(self.prefix)}
+        self.i2prefix = {i: p for i, p in enumerate(self.prefix)}
+
+    def get_prefix_and_suffix(self):
+        suffixes = {self.SHORT_SUB_WORD}
+        prefixes = {self.SHORT_SUB_WORD}
+
+        with open(self.train_path) as f:
+            lines = f.readlines()
+
+        for line in lines:
+            if line == "" or line == "\n":
+                continue
+            word, _ = line.strip().split("\t")
+
+            if len(word) < self.SUB_WORD_SIZE:
+                continue
+
+            suffix = word[len(word) - self.SUB_WORD_SIZE:]
+            prefix = word[:self.SUB_WORD_SIZE]
+            suffixes.add(suffix)
+            prefixes.add(prefix)
+
+        return prefixes, suffixes
+
+
 class Vocab:
     UNKNOWN_WORD = "UUUNKKK"
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))

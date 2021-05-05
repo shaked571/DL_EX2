@@ -1,6 +1,7 @@
 import argparse
-from tagger import MLP, Vocab, DataFile, Trainer
+from tagger import MLP, Vocab, DataFile, Trainer, SubWords
 from preprocessing import TitleProcess
+
 
 def main(task, part, embedding_dim,optimizer, batch_size, l_r, hidden_dim):
     word2vec = False
@@ -9,6 +10,7 @@ def main(task, part, embedding_dim,optimizer, batch_size, l_r, hidden_dim):
         word2vec = True
 
     title_process = TitleProcess()
+    sw = SubWords(task)
     vocab = Vocab(task, word2vec)
     train_df = DataFile(task, 'train', title_process, vocab)
     dev_df = DataFile(task, 'dev', title_process, vocab)
