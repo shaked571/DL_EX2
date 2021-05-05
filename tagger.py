@@ -247,7 +247,7 @@ class Tranier:
                 # clear the gradients of all optimized variables
                 self.optimizer.zero_grad()
                 # forward pass: compute predicted outputs by passing inputs to the model
-                output = model(data) # Eemnded Data Tensor size (1,5)
+                output = self.model(data) # Eemnded Data Tensor size (1,5)
                 # calculate the loss
                 loss = self.loss_func(output, target.view(-1))
                 # backward pass: compute gradient of the loss with respect to model parameters
@@ -268,13 +268,13 @@ class Tranier:
             self.evaluate_model(epoch, "epoch")
 
     def evaluate_model(self, step, stage):
-        model.eval()
+        self.model.eval()
         loss = 0
         correct = 0
         for eval_step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data),
                                               desc=f"dev step {step} loop"):
             data = data.to(self.device)
-            output = model(data)
+            output = self.model(data)
 
             loss = self.loss_func(output, target.view(-1))
             loss += loss.item() * data.size(0)
@@ -284,7 +284,7 @@ class Tranier:
         print(f'Accuracy/dev_{stage}: {accuracy}' )
         self.writer.add_scalar(f'Accuracy/dev_{stage}', accuracy)
         self.writer.add_scalar(f'Loss/dev_{stage}', loss, step )
-        model.train()
+        self.model.train()
 
     def suffix_run(self):
         res = ""
