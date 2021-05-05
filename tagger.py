@@ -37,7 +37,7 @@ import os
 # saving all the loss to a tensorboardX + Adduracy and Recall
 # Add a function that create a file name for each run
 
-
+torch.manual_seed(1)
 class SubWords:
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
     SUB_WORD_SIZE = 3
@@ -219,7 +219,7 @@ class MLP(nn.Module):
         self.vocab_size = self.vocab.vocab_size
         self.embed_dim = embedding_size
         self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)  #
-        self.softmax = nn.Softmax()
+        self.softmax = nn.Softmax(dim=1)
         # init embedding using word2vec
         if self.vocab.word2vec:
             weights = np.loadtxt(self.PATH)
@@ -306,29 +306,30 @@ class Trainer:
             self.evaluate_model(epoch, "epoch")
 
     def evaluate_model(self, step, stage):
-        self.model.eval()
-        loss = 0
+        with torch.no_grad():
+            self.model.eval()
+            loss = 0
 
-        prediction = []
-        all_target = []
-        for eval_step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data),
-                                              desc=f"dev step {step} loop"):
-            data = data.to(self.device)
-            target = target.to(self.device)
-            output = self.model(data)
+            prediction = []
+            all_target = []
+            for eval_step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data),
+                                                  desc=f"dev step {step} loop"):
+                data = data.to(self.device)
+                target = target.to(self.device)
+                output = self.model(data)
 
-            loss = self.loss_func(output, target.view(-1))
-            loss += loss.item() * data.size(0)
-            _, predicted = torch.max(output, 1)
-            prediction += predicted.tolist()
-            all_target += target.view(-1).tolist()
-        accuracy = self.accuracy_token_tag(prediction, all_target)
-        print(f'Accuracy/dev_{stage}: {accuracy}')
-        self.writer.add_scalar(f'Accuracy/dev_{stage}', accuracy, step)
-        self.writer.add_scalar(f'Loss/dev_{stage}', loss, step)
-        if accuracy > self.best_score:
-            self.best_score = accuracy
-            torch.save(self.model.state_dict(), self.saved_model_path)
+                loss = self.loss_func(output, target.view(-1))
+                loss += loss.item() * data.size(0)
+                _, predicted = torch.max(output, 1)
+                prediction += predicted.tolist()
+                all_target += target.view(-1).tolist()
+            accuracy = self.accuracy_token_tag(prediction, all_target)
+            print(f'Accuracy/dev_{stage}: {accuracy}')
+            self.writer.add_scalar(f'Accuracy/dev_{stage}', accuracy, step)
+            self.writer.add_scalar(f'Loss/dev_{stage}', loss, step)
+            if accuracy > self.best_score:
+                self.best_score = accuracy
+                torch.save(self.model.state_dict(), self.saved_model_path)
 
         self.model.train()
 
