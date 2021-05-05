@@ -253,6 +253,7 @@ class Tranier:
             self.model.train() # prep model for training
             for step, (data, target) in tqdm(enumerate(self.train_data), total=len(self.train_data)):
                 data = data.to(self.device)
+                target = target.to(self.device)
                 # clear the gradients of all optimized variables
                 self.optimizer.zero_grad()
                 # forward pass: compute predicted outputs by passing inputs to the model
@@ -283,6 +284,7 @@ class Tranier:
         for eval_step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data),
                                               desc=f"dev step {step} loop"):
             data = data.to(self.device)
+            target = target.to(self.device)
             output = self.model(data)
 
             loss = self.loss_func(output, target.view(-1))
