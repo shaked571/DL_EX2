@@ -215,7 +215,7 @@ class MLP(nn.Module):
         self.hidden_dim = hidden_dim
         self.vocab_size = self.vocab.vocab_size
         self.embed_dim = embedding_size
-        self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)
+        self.embedding = nn.Embedding(self.vocab_size, self.embed_dim) #
 
         # init embedding using word2vec
         if self.vocab.word2vec:
@@ -308,7 +308,7 @@ class Trainer:
         loss = 0
 
         prediction = []
-        target = []
+        all_target = []
         for eval_step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data),
                                               desc=f"dev step {step} loop"):
             data = data.to(self.device)
@@ -319,8 +319,8 @@ class Trainer:
             loss += loss.item() * data.size(0)
             _, predicted = torch.max(output, 1)
             prediction += predicted.tolist()
-            target += target.tolist()
-        accuracy = self.accuracy_token_tag(prediction, target)
+            all_target += target.view(-1).tolist()
+        accuracy = self.accuracy_token_tag(prediction, all_target)
         print(f'Accuracy/dev_{stage}: {accuracy}')
         self.writer.add_scalar(f'Accuracy/dev_{stage}', accuracy,step)
         self.writer.add_scalar(f'Loss/dev_{stage}', loss, step)
