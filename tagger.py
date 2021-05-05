@@ -324,10 +324,21 @@ class Trainer:
 
     def dump_test_file(self, test_prediction, test_file):
         res = []
+        cur_i = 0
         with open(test_file) as f:
             lines = f.readlines()
-        for l in lines:
-            if l ==
+        for line in lines:
+            if line == "" or line == "\n":
+                res.append(line)
+            else:
+                pred = f"{line}\t{test_prediction[cur_i]}\n"
+                res.append(pred)
+                cur_i += 1
+        pred_path = f"{self.suffix_run()}.tsv"
+        with open(pred_path, mode='w') as f:
+            f.writelines(res)
+
+
 
 
 # if __name__ == '__main__':
