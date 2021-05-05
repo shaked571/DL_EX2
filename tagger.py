@@ -215,6 +215,7 @@ class Tranier:
                  train_batch_size=4,
                  dev_batch_size=8,
                  to_shuffle=True,
+                 steps_to_eval = 4000,
                  lr=0.01):
         self.model = model
         self.train_data = DataLoader(train_data, batch_size=train_batch_size, shuffle=to_shuffle)
@@ -265,11 +266,24 @@ class Tranier:
                 step_loss += loss.item()*data.size(0)
                 if i % 4000 == 0:
                     print(f"in step: {i / 4000} train loss: {step_loss}")
-                    self.writer.add_scalar('Loss/train_step', step_loss, epoch)
+                    self.writer.add_scalar('Loss/train_step', step_loss, i / 4000)
                     step_loss = 0.0
+
+                    model.eval()
+                    loss_step_dev = 0
+                    for i, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data)):
+                        data = data.to(self.device)
+                        output = model(data)
+                        loss = self.loss_func(output, target.view(-1))
+                        loss_step_dev += loss.item()*data.size(0)
+                    self.writer.add_scalar('Loss/dev_step', loss_step_dev, i / 4000)
+
+
+                model.train()
+
+
             print(f"in epoch: {epoch + 1} train loss: {train_loss}")
             self.writer.add_scalar('Loss/train', train_loss, epoch)
-            # self.writer.add_scalar('Accuracy/train', np.random.random(), n_iter)
 
         #  TODO add  here a full run on dev set.
             #  TODO save model states with epoch i. togethere with loss
@@ -278,16 +292,16 @@ class Tranier:
             model.eval()
             for i, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data)):
                 data = data.to(self.device)
-                output = model(data) # Eemnded Data Tensor size (1,5)
+                output = model(data)
                 loss = self.loss_func(output, target.view(-1))
                 loss_dev += loss.item()*data.size(0)
+
             self.writer.add_scalar('Loss/dev', loss_dev, epoch)
-        # self.writer.add_scalar('Accuracy/test', np.random.random(), n_iter)
 
 
     def suffix_run(self):
         res = ""
-        for k,v in self.model_args.items():
+        for k, v in self.model_args.items():
             res += f"{k}_{v}_"
         res = res.strip("_")
         return res
@@ -301,5 +315,5 @@ if __name__ == '__main__':
     test_df = DataFile(os.path.join('data','ner'), 'test', title_process,  vocab)
     model = MLP(50, 100, vocab) #define how the network looks like
     # trainer = Tranier(model, train, 2)
-    trainer = Tranier(model, train_df, dev_df,  vocab, 2)
+    trainer = Tranier(model, train_df, dev_df,  vocab, 10)
     trainer.train()
