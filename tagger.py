@@ -214,19 +214,23 @@ class Tranier:
                  n_ep=1,
                  train_batch_size=4,
                  dev_batch_size=8,
-                 to_shuffle=True):
+                 to_shuffle=True,
+                 lr=0.01):
         self.model = model
         self.train_data = DataLoader(train_data, batch_size=train_batch_size, shuffle=to_shuffle)
         self.dev_data = DataLoader(dev_data, batch_size=dev_batch_size,)
         self.vocab = vocab
-        self.optimizer = optim.SGD(model.parameters(), lr=0.01)
+        self.optimizer = optim.SGD(model.parameters(), lr=lr)
 
         self.n_epochs = n_ep
         self.loss_func = nn.CrossEntropyLoss()
-        self.writer = SummaryWriter(log_dir=self.get_trainer_name())
-
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
+        self.model_args = {"lr": lr, "epoch":self.n_epochs,
+                      "shuffle": to_shuffle,
+                      "batch_size": train_batch_size,
+                      }
+        self.writer = SummaryWriter(log_dir="tensor_board", filename_suffix=self.suffix_run())
 
 
     def train(self):
@@ -242,7 +246,7 @@ class Tranier:
             ###################
             print(f"start epoch: {epoch + 1}")
             train_loss = 0.0
-
+            step_loss = 0
             self.model.train() # prep model for training
             for i, (data, target) in tqdm(enumerate(self.train_data), total=len(self.train_data)):
                 data = data.to(self.device)
@@ -258,6 +262,11 @@ class Tranier:
                 self.optimizer.step()
                 # update running training loss
                 train_loss += loss.item()*data.size(0)
+                step_loss += loss.item()*data.size(0)
+                if i % 4000 == 0:
+                    print(f"in step: {i / 4000} train loss: {step_loss}")
+                    self.writer.add_scalar('Loss/train_step', step_loss, epoch)
+                    step_loss = 0.0
             print(f"in epoch: {epoch + 1} train loss: {train_loss}")
             self.writer.add_scalar('Loss/train', train_loss, epoch)
             # self.writer.add_scalar('Accuracy/train', np.random.random(), n_iter)
@@ -267,7 +276,7 @@ class Tranier:
             #  TODO add loss dev, loss train, accuracy to the tensorboard
             loss_dev = 0
             model.eval()
-            for i, (data, target) in enumerate(self.train_data):
+            for i, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data)):
                 data = data.to(self.device)
                 output = model(data) # Eemnded Data Tensor size (1,5)
                 loss = self.loss_func(output, target.view(-1))
@@ -276,8 +285,12 @@ class Tranier:
         # self.writer.add_scalar('Accuracy/test', np.random.random(), n_iter)
 
 
-    def get_trainer_name(self):
-        return "FFFFFFFFFFFFFFFFIXXX MEEEEe" # TODO
+    def suffix_run(self):
+        res = ""
+        for k,v in self.model_args.items():
+            res += f"{k}_{v}_"
+        res = res.strip("_")
+        return res
 
 
 if __name__ == '__main__':
