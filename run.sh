@@ -13,7 +13,7 @@ do
       do
       for l_r in 0.01 0.001
       do
-       for batch_size in 1 32 128
+       for batch_size in 3 32 128
        do
        echo "Output:"
         echo "part${part}_task${task}_hiddendim${hidden_dim}_embeddingdim${embedding_dim}_optim_${optimizer}_lr${l_r}_batch_size${batch_size}"

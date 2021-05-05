@@ -241,7 +241,7 @@ class MLP(nn.Module):
 
 class Trainer:
     def __init__(self, model: nn.Module, train_data: DataFile, dev_data: DataFile, vocab: Vocab, n_ep=1,
-                 optimizer='AdamW', train_batch_size=8, steps_to_eval=4000, lr=0.01):
+                 optimizer='AdamW', train_batch_size=8, steps_to_eval=8000, lr=0.01):
         self.model = model
         self.dev_batch_size = 128
         self.train_data = DataLoader(train_data, batch_size=train_batch_size, shuffle=True)
