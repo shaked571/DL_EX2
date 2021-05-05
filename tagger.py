@@ -40,19 +40,41 @@ import os
 class SubWords:
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
     SUB_WORD_SIZE = 3
-    SHORT_SUB_WORD = "SHORT"
+    SHORT_SUB_WORD = "SHORT_WORD"
+    UNKNOWN_SUB_WORD = "UNKNOW_SUB_WORD"
 
     def __init__(self, task: str):
         self.train_path = os.path.join(self.BASE_PATH, task, 'train')
         self.suffix, self.prefix = self.get_prefix_and_suffix()
+
+        self.suffix_num = len(self.suffix)
+        self.prefix_num = len(self.prefix)
+
         self.suffix2i = {s: i for i, s in enumerate(self.suffix)}
         self.i2suffix = {i: s for i, s in enumerate(self.suffix)}
         self.prefix2i = {p: i for i, p in enumerate(self.prefix)}
         self.i2prefix = {i: p for i, p in enumerate(self.prefix)}
 
+    def get_sub_words_indexes_by_word(self, word):
+        if len(word) < self.SUB_WORD_SIZE:
+            return self.prefix2i[self.SHORT_SUB_WORD], self.suffix2i[self.SHORT_SUB_WORD]
+
+        prefix, suffix = self.get_sub_words_by_word(word)
+        if prefix not in self.prefix2i:
+            prefix = self.UNKNOWN_SUB_WORD
+        if suffix not in self.suffix2i:
+            suffix = self.UNKNOWN_SUB_WORD
+
+        return self.prefix2i[prefix], self.suffix2i[suffix]
+
+    def get_sub_words_by_word(self, word):
+        suffix = word[len(word) - self.SUB_WORD_SIZE:]
+        prefix = word[:self.SUB_WORD_SIZE]
+        return prefix, suffix
+
     def get_prefix_and_suffix(self):
-        suffixes = {self.SHORT_SUB_WORD}
-        prefixes = {self.SHORT_SUB_WORD}
+        suffixes = {self.SHORT_SUB_WORD, self.UNKNOWN_SUB_WORD}
+        prefixes = {self.SHORT_SUB_WORD, self.UNKNOWN_SUB_WORD}
 
         with open(self.train_path) as f:
             lines = f.readlines()
@@ -65,8 +87,7 @@ class SubWords:
             if len(word) < self.SUB_WORD_SIZE:
                 continue
 
-            suffix = word[len(word) - self.SUB_WORD_SIZE:]
-            prefix = word[:self.SUB_WORD_SIZE]
+            prefix, suffix = self.get_sub_words_by_word(word)
             suffixes.add(suffix)
             prefixes.add(prefix)
 
@@ -146,10 +167,11 @@ class DataFile(Dataset):
     WINDOW_SIZE = 5
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
-    def __init__(self, task: str, data_set, pre_processor: PreProcessor, vocab: Vocab):
+    def __init__(self, task: str, data_set, pre_processor: PreProcessor, vocab: Vocab, sub_words: SubWords = None):
         self.data_path = os.path.join(self.BASE_PATH, task, data_set)
         self.pre_processor: PreProcessor = pre_processor
         self.vocab: Vocab = vocab
+        self.sub_words = sub_words
         self.data: List[InputExample] = self.read_examples_from_file()
 
     def read_sents(self, lines):
@@ -194,11 +216,26 @@ class DataFile(Dataset):
             guid_index += 1
         return examples
 
+    def get_sub_words_tensor(self, words):
+        words_prefixes = []
+        words_suffixes = []
+        for w in words:
+            prefix, suffix = self.sub_words.get_sub_words_indexes_by_word(w)
+            words_prefixes.append(prefix)
+            words_suffixes.append(suffix)
+        prefixes_tensor = torch.tensor(words_prefixes).to(torch.int64)
+        suffixes_tensor = torch.tensor(words_suffixes).to(torch.int64)
+        return prefixes_tensor, suffixes_tensor
+
     def __getitem__(self, index) -> T_co:
         words = self.data[index].words
         label = self.data[index].label
         words_tensor = torch.tensor([self.vocab.get_word_index(w) for w in words]).to(torch.int64)
         label_tensor = torch.tensor([self.vocab.label2i[label]]).to(torch.int64)
+
+        if self.sub_words:
+            prefixes_tensor, suffixes_tensor = self.get_sub_words_tensor(words)
+            words_tensor = torch.stack((words_tensor, prefixes_tensor, suffixes_tensor), dim=0)
 
         return words_tensor, label_tensor
 
@@ -215,7 +252,7 @@ class MLP(nn.Module):
         self.hidden_dim = hidden_dim
         self.vocab_size = self.vocab.vocab_size
         self.embed_dim = embedding_size
-        self.embedding = nn.Embedding(self.vocab_size, self.embed_dim) #
+        self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)
 
         # init embedding using word2vec
         if self.vocab.word2vec:
@@ -233,6 +270,25 @@ class MLP(nn.Module):
         out = self.tanh(out)
         out = self.linear2(out)
 
+        return out
+
+
+class MLPSubWords(MLP):
+    def __init__(self, embedding_size: int, hidden_dim: int, vocab: Vocab, sub_words: SubWords):
+        super().__init__(embedding_size, hidden_dim, vocab)
+        self.sub_words = sub_words
+        self.prefix_embedding = nn.Embedding(self.sub_words.prefix_num, self.embed_dim)
+        self.suffix_embedding = nn.Embedding(self.sub_words.suffix_num, self.embed_dim)
+
+    def forward(self, x):
+        out_word = self.embedding(x[torch.arange(x.size(0)), 0])
+        out_pre = self.prefix_embedding(x[torch.arange(x.size(0)), 1])
+        out_suf = self.suffix_embedding(x[torch.arange(x.size(0)), 2])
+        out = torch.stack((out_word, out_pre, out_suf), dim=0).sum(axis=0)
+        out = out.view(out.size(0), -1)
+        out = self.linear1(out)
+        out = self.tanh(out)
+        out = self.linear2(out)
         return out
 
 
@@ -343,7 +399,6 @@ class Trainer:
             _, predicted = torch.max(output, 1)
             prediction += predicted.tolist()
         return [self.vocab.i2label[i] for i in prediction]
-        
 
     def accuracy_token_tag(self, predict: List, target: List):
         predict = [self.vocab.i2label[i] for i in predict]

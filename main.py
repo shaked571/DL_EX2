@@ -1,26 +1,32 @@
 import argparse
-from tagger import MLP, Vocab, DataFile, Trainer, SubWords
+from tagger import MLP, Vocab, DataFile, Trainer, SubWords, MLPSubWords
 from preprocessing import TitleProcess
 
 
 def main(task, part, embedding_dim, batch_size, l_r, hidden_dim):
     word2vec = False
+    sub_words = None
     if part == 3:
         embedding_dim = 50
         word2vec = True
 
-    title_process = TitleProcess()
-    sw = SubWords(task)
     vocab = Vocab(task, word2vec)
-    train_df = DataFile(task, 'train', title_process, vocab)
-    dev_df = DataFile(task, 'dev', title_process, vocab)
-    test_df = DataFile(task, 'test', title_process, vocab)
-    model = MLP(embedding_dim, hidden_dim, vocab)
+
+    if part == 4:
+        sub_words = SubWords(task)
+        model = MLPSubWords(embedding_dim, hidden_dim, vocab, sub_words)
+    else:
+        model = MLP(embedding_dim, hidden_dim, vocab)
+
+    title_process = TitleProcess()
+    train_df = DataFile(task, 'train', title_process, vocab, sub_words)
+    dev_df = DataFile(task, 'dev', title_process, vocab, sub_words)
+    test_df = DataFile(task, 'test', title_process, vocab, sub_words)
+
     trainer = Trainer(model, train_df, dev_df, vocab, 15, batch_size, l_r)
     trainer.train()
     test_prediction = trainer.test(test_df)
     trainer.dump_test_file(test_prediction, test_df.data_path)
-
 
 
 if __name__ == "__main__":
