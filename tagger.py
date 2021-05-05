@@ -43,8 +43,10 @@ class Vocab:
     def __init__(self, train_path: str):
         print("*"*100)
         print(self.base_path)
+        self.train_path = os.path.abspath(os.path.join(self.base_path, train_path))
+        print(f"joined path: { os.path.abspath(os.path.join(self.base_path, train_path))}")
+        print(f"train path: {self.train_path}")
         print("*"*100)
-        self.train_path = os.path.join(self.base_path, train_path)
         self.words, self.labels = self.get_unique(self.train_path)
         self.vocab_size = len(self.words)
         self.num_of_labels = len(self.labels)
