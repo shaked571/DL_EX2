@@ -20,11 +20,11 @@ do
         --train_path /data/${task}/train \
         --dev_path /data/${task}/dev \
         --test_path /data/${task}/test \
-        --part part \
-        --embedding_dim embedding_dim \
-        --batch_size batch_size \
-        --hidden_dim hidden_dim \
-        --l_r l_r
+        --part $part \
+        --embedding_dim $embedding_dim \
+        --batch_size $batch_size \
+        --hidden_dim $hidden_dim \
+        --l_r $l_r
 
       done
      done

@@ -41,7 +41,7 @@ class Vocab:
     UNKNOWN_WORD = "UUUNKKK"
 
     def __init__(self, train_path: str):
-        self.train_path = train_path
+        self.train_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), train_path)
         self.words, self.labels = self.get_unique(self.train_path)
         self.vocab_size = len(self.words)
         self.num_of_labels = len(self.labels)
@@ -84,7 +84,7 @@ class DataFile(Dataset):
     WINDOW_SIZE = 5
 
     def __init__(self, data_path: str, pre_processor: PreProcessor, vocab: Vocab):
-        self.data_path = data_path
+        self.data_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), data_path)
         self.pre_processor: PreProcessor = pre_processor
         self.vocab: Vocab = vocab
         self.data: List[InputExample] = self.read_examples_from_file()
