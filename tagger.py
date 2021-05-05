@@ -39,17 +39,17 @@ import os
 
 class Vocab:
     UNKNOWN_WORD = "UUUNKKK"
-    VOCAB_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data', 'vocab.txt')
+    base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
+    VOCAB_PATH = os.path.join(base_path, 'data', 'vocab.txt')
 
-    def __init__(self, train_path: str, vocab_from_train):
+    def __init__(self, task: str, vocab_from_train: str):
         self.vocab_from_train = vocab_from_train
-        self.train_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), train_path)
+        self.train_path = os.path.join(self.base_path, task, 'train')
         if self.vocab_from_train:
             self.words, self.labels = self.get_unique(self.train_path)
         else:
             _, self.labels = self.get_unique(self.train_path)
             self.words = self.get_word2vec_words()
-
         self.vocab_size = len(self.words)
         self.num_of_labels = len(self.labels)
         self.i2word = {i: w for i, w in enumerate(self.words)}
@@ -105,9 +105,10 @@ class InputExample:
 
 class DataFile(Dataset):
     WINDOW_SIZE = 5
+    base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
-    def __init__(self, data_path: str, pre_processor: PreProcessor, vocab: Vocab):
-        self.data_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), data_path)
+    def __init__(self, task: str, data_set, pre_processor: PreProcessor, vocab: Vocab):
+        self.data_path = os.path.join(self.base_path, task, data_set)
         self.pre_processor: PreProcessor = pre_processor
         self.vocab: Vocab = vocab
         self.data: List[InputExample] = self.read_examples_from_file()
@@ -251,6 +252,7 @@ class Tranier:
             self.model.train() # prep model for training
             for step, (data, target) in tqdm(enumerate(self.train_data), total=len(self.train_data)):
                 data = data.to(self.device)
+                target = target.to(self.device)
                 # clear the gradients of all optimized variables
                 self.optimizer.zero_grad()
                 # forward pass: compute predicted outputs by passing inputs to the model
@@ -281,6 +283,7 @@ class Tranier:
         for eval_step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data),
                                               desc=f"dev step {step} loop"):
             data = data.to(self.device)
+            target = target.to(self.device)
             output = self.model(data)
 
             loss = self.loss_func(output, target.view(-1))
