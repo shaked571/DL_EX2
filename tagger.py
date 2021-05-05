@@ -322,10 +322,10 @@ class Trainer:
                 correct += 1
         return (correct / all_pred) * 100
 
-    def dump_test_file(self, test_prediction, test_file):
+    def dump_test_file(self, test_prediction, test_file_path):
         res = []
         cur_i = 0
-        with open(test_file) as f:
+        with open(test_file_path) as f:
             lines = f.readlines()
         for line in lines:
             if line == "" or line == "\n":
