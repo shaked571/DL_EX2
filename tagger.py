@@ -204,6 +204,7 @@ class Trainer:
     def __init__(self, model: nn.Module, train_data: DataFile, dev_data: DataFile,
                  vocab: Vocab,
                  n_ep=1,
+                 optimizer='AdamW',
                  train_batch_size=8,
                  steps_to_eval=4000,
                  lr=0.01):
@@ -213,7 +214,14 @@ class Trainer:
         self.dev_data = DataLoader(dev_data, batch_size=self.dev_batch_size,)
 
         self.vocab = vocab
-        self.optimizer = optim.SGD(model.parameters(), lr=lr)
+        if optimizer == "SGD":
+            self.optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay= 0.001)
+        elif optimizer == "AdamW":
+            self.optimizer = optim.AdamW(model.parameters(), lr=lr)
+        elif optimizer == "Adam":
+            self.optimizer = optim.AdamW(model.parameters(), lr=lr)
+        else:
+            raise ValueError("optimizer supports SGD, Adam, AdamW")
         self.steps_to_eval = steps_to_eval
         self.n_epochs = n_ep
         self.loss_func = nn.CrossEntropyLoss()
@@ -227,12 +235,6 @@ class Trainer:
         self.writer = SummaryWriter(log_dir=f"tensor_board/{self.suffix_run()}")
 
     def train(self):
-        # initialize tracker for minimum validation loss
-        valid_loss_min = np.Inf # set initial "min" to infinity
-        # monitor training loss
-        total_train_loss = 0.0
-        total_dev_loss = 0.0
-
         for epoch in range(self.n_epochs):
             ###################
             # train the model #
@@ -262,10 +264,10 @@ class Trainer:
                     self.writer.add_scalar('Loss/train_step', step_loss, step * (epoch + 1))
                     step_loss = 0.0
                     self.evaluate_model(step * (epoch + 1), "step")
-
             print(f"in epoch: {epoch + 1} train loss: {train_loss}")
             self.writer.add_scalar('Loss/train', train_loss, epoch)
             self.evaluate_model(epoch, "epoch")
+
 
     def evaluate_model(self, step, stage):
         self.model.eval()
