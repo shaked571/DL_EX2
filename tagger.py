@@ -210,7 +210,7 @@ class Tranier:
                  lr=0.01):
         self.model = model
         self.dev_batch_size = 128
-        self.train_data = DataLoader(train_data, batch_size=train_batch_size, shuffle=to_shuffle)
+        self.train_data = DataLoader(train_data, batch_size=train_batch_size, shuffle=True)
         self.dev_data = DataLoader(dev_data, batch_size=self.dev_batch_size,)
 
         self.vocab = vocab

@@ -4,7 +4,7 @@ from preprocessing import TitleProcess
 
 
 def main(train_path, dev_path, test_path, part, embedding_dim, batch_size, l_r, hidden_dim):
-    if part == 2:
+    if part == 3:
         embedding_dim = 50
     title_process = TitleProcess()
     vocab = Vocab(train_path)
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser.add_argument('--part', type=int, required=True)
     parser.add_argument('--embedding_dim', type=int, required=False)
     parser.add_argument('--batch_size', type=int, required=False)
-    parser.add_argument('--l_r', type=int, required=False)
+    parser.add_argument('--l_r', type=float, required=False)
     parser.add_argument('--hidden_dim', type=int, required=True)
 
     args = parser.parse_args()
