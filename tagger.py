@@ -39,9 +39,10 @@ import os
 
 class Vocab:
     UNKNOWN_WORD = "UUUNKKK"
-
+    base_path = os.path.abspath(os.path.dirname(__file__))
     def __init__(self, train_path: str):
-        self.train_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), train_path)
+        print(self.base_path)
+        self.train_path = os.path.join(self.base_path, train_path)
         self.words, self.labels = self.get_unique(self.train_path)
         self.vocab_size = len(self.words)
         self.num_of_labels = len(self.labels)
