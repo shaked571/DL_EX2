@@ -4,10 +4,13 @@ from preprocessing import TitleProcess
 
 
 def main(train_path, dev_path, test_path, part, embedding_dim, batch_size, l_r, hidden_dim):
+    vocab_from_train = True
     if part == 3:
         embedding_dim = 50
+        vocab_from_train = False
+
     title_process = TitleProcess()
-    vocab = Vocab(train_path)
+    vocab = Vocab(train_path, vocab_from_train)
     train_df = DataFile(train_path, title_process, vocab)
     dev_df = DataFile(dev_path, title_process, vocab)
     test_df = DataFile(test_path, title_process, vocab)
