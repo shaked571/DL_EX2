@@ -338,10 +338,11 @@ class Trainer:
         return res
 
     def test(self, test_df):
+        test = DataLoader(test_df, batch_size=self.dev_batch_size, )
         self.model.load_state_dict(torch.load(self.saved_model_path))
         self.model.eval()
         prediction = []
-        for test_step, (data, target) in tqdm(enumerate(test_df), total=len(test_df), desc=f"test data"):
+        for test_step, (data, _) in tqdm(enumerate(test), total=len(test), desc=f"test data"):
             data = data.to(self.device)
             output = self.model(data)
             _, predicted = torch.max(output, 1)
@@ -370,7 +371,7 @@ class Trainer:
             if line == "" or line == "\n":
                 res.append(line)
             else:
-                pred = f"{line}\t{test_prediction[cur_i]}\n"
+                pred = f"{line.strip()}\t{test_prediction[cur_i]}\n"
                 res.append(pred)
                 cur_i += 1
         pred_path = f"{self.suffix_run()}.tsv"
