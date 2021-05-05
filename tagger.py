@@ -39,12 +39,12 @@ import os
 
 class Vocab:
     UNKNOWN_WORD = "UUUNKKK"
-    base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
-    VOCAB_PATH = os.path.join(base_path, 'data', 'vocab.txt')
+    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
+    VOCAB_PATH = os.path.join(BASE_PATH, 'vocab.txt')
 
     def __init__(self, task: str, vocab_from_train: str):
         self.vocab_from_train = vocab_from_train
-        self.train_path = os.path.join(self.base_path, task, 'train')
+        self.train_path = os.path.join(self.BASE_PATH, task, 'train')
         if self.vocab_from_train:
             self.words, self.labels = self.get_unique(self.train_path)
         else:
@@ -105,10 +105,10 @@ class InputExample:
 
 class DataFile(Dataset):
     WINDOW_SIZE = 5
-    base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
+    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
     def __init__(self, task: str, data_set, pre_processor: PreProcessor, vocab: Vocab):
-        self.data_path = os.path.join(self.base_path, task, data_set)
+        self.data_path = os.path.join(self.BASE_PATH, task, data_set)
         self.pre_processor: PreProcessor = pre_processor
         self.vocab: Vocab = vocab
         self.data: List[InputExample] = self.read_examples_from_file()
@@ -155,13 +155,6 @@ class DataFile(Dataset):
             guid_index += 1
         return examples
 
-    # def get_word_index(self, word):
-    #     if not self.vocab.vocab_from_train:
-    #         word = word.lower()
-    #     if word in self.vocab.word2i:
-    #         return self.vocab.word2i[word]
-    #     return self.vocab.word2i[self.vocab.UNKNOWN_WORD]
-
     def __getitem__(self, index) -> T_co:
         words = self.data[index].words
         label = self.data[index].label
@@ -181,20 +174,17 @@ class MLP(nn.Module):
         super(MLP, self).__init__()
         self.vocab = vocab
         self.hidden_dim = hidden_dim
+        self.vocab_size = self.vocab.vocab_size
+        #init embediing using load
         if load_embedding:
             self.embed_dim = 50
-            self.vocab_size = 0 # TODO from read embeddinf
-            #code to load embedinng
-            #init embediing using load
             weights = np.loadtxt(self.PATH)
             self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)
             self.embedding.weight.data.copy_(torch.from_numpy(weights))
         else:
-            self.embed_dim = embedding_size
             #init embediing using randomly
-            self.vocab_size = self.vocab.vocab_size
+            self.embed_dim = embedding_size
             self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)
-
             self.linear1 = nn.Linear(self.embed_dim * 5, self.hidden_dim)
             self.tanh = nn.Tanh()
             self.linear2 = nn.Linear(self.hidden_dim, self.vocab.num_of_labels)
@@ -209,7 +199,7 @@ class MLP(nn.Module):
         return out
 
 
-class Tranier:
+class Trainer:
     def __init__(self, model: nn.Module, train_data: DataFile, dev_data: DataFile,
                  vocab: Vocab,
                  n_ep=1,

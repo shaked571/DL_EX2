@@ -1,5 +1,5 @@
 import argparse
-from tagger import MLP, Vocab, DataFile, Tranier
+from tagger import MLP, Vocab, DataFile, Trainer
 from preprocessing import TitleProcess
 
 
@@ -15,7 +15,7 @@ def main(task, part, embedding_dim, batch_size, l_r, hidden_dim):
     dev_df = DataFile(task, 'dev', title_process, vocab)
     test_df = DataFile(task, 'test', title_process, vocab)
     model = MLP(embedding_dim, hidden_dim, vocab)
-    trainer = Tranier(model, train_df, dev_df, vocab, 15, batch_size, l_r)
+    trainer = Trainer(model, train_df, dev_df, vocab, 15, batch_size, l_r)
     trainer.train()
 
 
