@@ -1,4 +1,6 @@
 from collections import Counter
+from datetime import datetime
+
 from tqdm import tqdm
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, T_co
@@ -213,13 +215,14 @@ class Tranier:
                  vocab: Vocab,
                  n_ep=1,
                  train_batch_size=8,
-                 dev_batch_size=128,
                  to_shuffle=True,
                  steps_to_eval = 4000,
                  lr=0.01):
         self.model = model
+        self.dev_batch_size = 128
         self.train_data = DataLoader(train_data, batch_size=train_batch_size, shuffle=to_shuffle)
-        self.dev_data = DataLoader(dev_data, batch_size=dev_batch_size,)
+        self.dev_data = DataLoader(dev_data, batch_size=self.dev_batch_size,)
+
         self.vocab = vocab
         self.optimizer = optim.SGD(model.parameters(), lr=lr)
 
@@ -231,7 +234,7 @@ class Tranier:
                       "shuffle": to_shuffle,
                       "batch_size": train_batch_size,
                       }
-        self.writer = SummaryWriter(log_dir=f"tensor_board/{self.suffix_run()}")
+        self.writer = SummaryWriter(log_dir=f"tensor_board/{self.suffix_run()}_{datetime.now().strftime('%d_ %H_%M_%S')}")
 
 
     def train(self):
@@ -266,46 +269,32 @@ class Tranier:
                 step_loss += loss.item()*data.size(0)
                 if step % 4000 == 0:
                     print(f"in step: {step} train loss: {step_loss}")
-                    self.writer.add_scalar('Loss/train_step', step_loss, step / 4000)
+                    self.writer.add_scalar('Loss/train_step', step_loss, step * (epoch + 1))
                     step_loss = 0.0
-
-                    model.eval()
-                    loss_step_dev = 0
-                    correct_dev_step = 0
-                    for step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data),
-                                                  desc=f"dev step {step} loop"):
-                        data = data.to(self.device)
-                        output = model(data)
-
-                        loss = self.loss_func(output, target.view(-1))
-                        loss_step_dev += loss.item()*data.size(0)
-                        _, predicted = torch.max(output, 1)
-                        correct_dev_step += (predicted == target.view(-1)).sum()
-
-                    self.writer.add_scalar('Accuracy/dev_step',(100 * correct_dev_step / len(self.dev_data)), step / 4000)
-                    self.writer.add_scalar('Loss/dev_step', loss_step_dev, step / 4000)
-                    model.train()
+                    self.evaluate_model(step * (epoch + 1), "step")
 
             print(f"in epoch: {epoch + 1} train loss: {train_loss}")
             self.writer.add_scalar('Loss/train', train_loss, epoch)
+            self.evaluate_model(epoch, "epoch")
 
-        #  TODO add  here a full run on dev set.
-            #  TODO save model states with epoch i. togethere with loss
-            #  TODO add loss dev, loss train, accuracy to the tensorboard
-            loss_dev = 0
-            correct_dev_epoch = 0
-            model.eval()
-            for step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data)):
-                data = data.to(self.device)
-                output = model(data)
-                loss = self.loss_func(output, target.view(-1))
-                loss_dev += loss.item()*data.size(0)
-                _, predicted = torch.max(output, 1)
-                correct_dev_epoch += (predicted == target.view(-1)).sum()
+    def evaluate_model(self, step, stage):
+        model.eval()
+        loss = 0
+        correct = 0
+        for eval_step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data),
+                                              desc=f"dev step {step} loop"):
+            data = data.to(self.device)
+            output = model(data)
 
-            self.writer.add_scalar('Accuracy/dev_epoch',(100 * correct_dev_epoch / len(self.dev_data)), epoch)
-            self.writer.add_scalar('Loss/dev', loss_dev, epoch)
-
+            loss = self.loss_func(output, target.view(-1))
+            loss += loss.item() * data.size(0)
+            _, predicted = torch.max(output, 1)
+            correct += (predicted == target.view(-1)).sum()
+        accuracy = float(((correct / (len(self.dev_data) * self.dev_batch_size)) * 100))
+        print(f'Accuracy/dev_{stage}: {accuracy}' )
+        self.writer.add_scalar(f'Accuracy/dev_{stage}', accuracy)
+        self.writer.add_scalar(f'Loss/dev_{stage}', loss, step )
+        model.train()
 
     def suffix_run(self):
         res = ""
