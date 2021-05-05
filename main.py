@@ -2,7 +2,6 @@ import argparse
 from tagger import MLP, Vocab, DataFile, Tranier
 from preprocessing import TitleProcess
 
-
 def main(task, part, embedding_dim, batch_size, l_r, hidden_dim):
     if part == 3:
         embedding_dim = 50
@@ -14,6 +13,9 @@ def main(task, part, embedding_dim, batch_size, l_r, hidden_dim):
     model = MLP(embedding_dim, hidden_dim, vocab)
     trainer = Tranier(model, train_df, dev_df, vocab, 15, batch_size, l_r)
     trainer.train()
+    test_prediction = trainer.test(test_df)
+    trainer.dump_test_file(test_prediction, test_df.data_path)
+
 
 
 if __name__ == "__main__":

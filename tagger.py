@@ -60,7 +60,7 @@ class Vocab:
         with open(path) as f:
             lines = f.readlines()
         for line in lines:
-            if line.startswith("-DOCSTART-") or line == "" or line == "\n":
+            if line == "" or line == "\n":
                 continue
             word, label = line.strip().split("\t")
             words.add(word)
@@ -102,7 +102,7 @@ class DataFile(Dataset):
         sentences = []
         sent = []
         for line in lines:
-            if line.startswith("-DOCSTART-") or line == "" or line == "\n":
+            if line == "" or line == "\n":
                 if sent:
                     sentences.append(sent)
                     sent = []
@@ -280,7 +280,9 @@ class Tranier:
     def evaluate_model(self, step, stage):
         self.model.eval()
         loss = 0
-        correct = 0
+
+        prediction = []
+        target = []
         for eval_step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data),
                                               desc=f"dev step {step} loop"):
             data = data.to(self.device)
@@ -290,11 +292,12 @@ class Tranier:
             loss = self.loss_func(output, target.view(-1))
             loss += loss.item() * data.size(0)
             _, predicted = torch.max(output, 1)
-            correct += (predicted == target.view(-1)).sum()
-        accuracy = float(((correct / (len(self.dev_data) * self.dev_batch_size)) * 100))
-        print(f'Accuracy/dev_{stage}: {accuracy}' )
-        self.writer.add_scalar(f'Accuracy/dev_{stage}', accuracy)
-        self.writer.add_scalar(f'Loss/dev_{stage}', loss, step )
+            prediction += predicted.tolist()
+            target += target.tolist()
+        accuracy = self.accuracy_token_tag(prediction, target)
+        print(f'Accuracy/dev_{stage}: {accuracy}')
+        self.writer.add_scalar(f'Accuracy/dev_{stage}', accuracy,step)
+        self.writer.add_scalar(f'Loss/dev_{stage}', loss, step)
         self.model.train()
 
     def suffix_run(self):
@@ -303,6 +306,38 @@ class Tranier:
             res += f"{k}_{v}_"
         res = res.strip("_")
         return res
+
+    def test(self, test_df):
+        self.model.eval()
+        prediction = []
+        for test_step, (data, target) in tqdm(enumerate(test_df), total=len(test_df),
+                                              desc=f"test data"):
+            data = data.to(self.device)
+            output = self.model(data)
+            _, predicted = torch.max(output, 1)
+            prediction += predicted.tolist()
+        return [self.vocab.i2label[i] for i in prediction]
+        
+
+    def accuracy_token_tag(self, predict: List, target: List):
+        predict = [self.vocab.i2label[i] for i in predict]
+        target = [self.vocab.i2label[i] for i in target]
+        all_pred = 0
+        correct = 0
+        for p, t in zip(predict, target):
+            if t == 'O' and p == 'O':
+                continue
+            all_pred += 1
+            if t == p:
+                correct += 1
+        return (correct / all_pred) * 100
+
+    def dump_test_file(self, test_prediction, test_file):
+        res = []
+        with open(test_file) as f:
+            lines = f.readlines()
+        for l in lines:
+            if l ==
 
 
 # if __name__ == '__main__':
