@@ -219,7 +219,7 @@ class MLP(nn.Module):
         self.vocab_size = self.vocab.vocab_size
         self.embed_dim = embedding_size
         self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)  #
-
+        self.softmax = nn.Softmax()
         # init embedding using word2vec
         if self.vocab.word2vec:
             weights = np.loadtxt(self.PATH)
@@ -235,11 +235,13 @@ class MLP(nn.Module):
         out = self.linear1(out)
         out = self.tanh(out)
         out = self.linear2(out)
+        out = nn.Softmax(out)
 
         return out
 
 
 class Trainer:
+
     def __init__(self, model: nn.Module, train_data: DataFile, dev_data: DataFile, vocab: Vocab, n_ep=1,
                  optimizer='AdamW', train_batch_size=8, steps_to_eval=8000, lr=0.01):
         self.model = model

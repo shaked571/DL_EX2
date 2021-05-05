@@ -3,10 +3,10 @@ from tagger import MLP, Vocab, DataFile, Trainer, SubWords
 from preprocessing import TitleProcess
 
 
-def main(task, part, embedding_dim,optimizer, batch_size, l_r, hidden_dim):
+def main(task, part,optimizer, batch_size, l_r, hidden_dim):
     word2vec = False
+    embedding_dim = 50
     if part == 3:
-        embedding_dim = 50
         word2vec = True
 
     title_process = TitleProcess()
@@ -34,4 +34,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(args.task, args.part, args.embedding_dim, args.optimizer,args.batch_size, args.l_r, args.hidden_dim)
+    main(args.task, args.part, args.optimizer,args.batch_size, args.l_r, args.hidden_dim)
