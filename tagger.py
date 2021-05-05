@@ -40,10 +40,10 @@ import os
 class Vocab:
     UNKNOWN_WORD = "UUUNKKK"
     base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
-    def __init__(self, mission: str):
+    def __init__(self, task: str):
         print("*"*100)
         print(self.base_path)
-        self.train_path = os.path.join(self.base_path, mission, 'train')
+        self.train_path = os.path.join(self.base_path, task, 'train')
         print(f"train path: {self.train_path}")
         print("*"*100)
         self.words, self.labels = self.get_unique(self.train_path)
@@ -88,13 +88,12 @@ class DataFile(Dataset):
     WINDOW_SIZE = 5
     base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
-    def __init__(self, mission: str, data_set, pre_processor: PreProcessor, vocab: Vocab):
+    def __init__(self, task: str, data_set, pre_processor: PreProcessor, vocab: Vocab):
         print("*"*100)
         print(self.base_path)
-        self.train_path = os.path.join(self.base_path, mission, data_set)
-        print(f"train path: {self.train_path}")
+        self.data_path = os.path.join(self.base_path, task, data_set)
+        print(f"data path: {self.data_path}")
         print("*"*100)
-        self.data_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), data_path)
         self.pre_processor: PreProcessor = pre_processor
         self.vocab: Vocab = vocab
         self.data: List[InputExample] = self.read_examples_from_file()

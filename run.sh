@@ -17,7 +17,7 @@ do
        echo "part${part}_task${task}_hiddendim${hidden_dim}_embeddingdim${embedding_dim}_lr${l_r}_batch_size${batch_size}"
 
         python main.py \
-        --train_path ${task} \
+        --task ${task} \
         --part $part \
         --embedding_dim $embedding_dim \
         --batch_size $batch_size \
