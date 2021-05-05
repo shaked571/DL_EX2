@@ -219,7 +219,6 @@ class MLP(nn.Module):
         self.vocab_size = self.vocab.vocab_size
         self.embed_dim = embedding_size
         self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)  #
-        self.softmax = nn.Softmax(dim=1)
         # init embedding using word2vec
         if self.vocab.word2vec:
             weights = np.loadtxt(self.PATH)
@@ -235,8 +234,6 @@ class MLP(nn.Module):
         out = self.linear1(out)
         out = self.tanh(out)
         out = self.linear2(out)
-        out = self.softmax(out)
-
         return out
 
 
