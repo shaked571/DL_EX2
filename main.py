@@ -4,13 +4,13 @@ from preprocessing import TitleProcess
 
 
 def main(task, part, embedding_dim, batch_size, l_r, hidden_dim):
-    vocab_from_train = True
+    word2vec = False
     if part == 3:
         embedding_dim = 50
-        vocab_from_train = False
+        word2vec = True
 
     title_process = TitleProcess()
-    vocab = Vocab(task, vocab_from_train)
+    vocab = Vocab(task, word2vec)
     train_df = DataFile(task, 'train', title_process, vocab)
     dev_df = DataFile(task, 'dev', title_process, vocab)
     test_df = DataFile(task, 'test', title_process, vocab)

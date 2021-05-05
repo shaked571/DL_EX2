@@ -42,14 +42,15 @@ class Vocab:
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
     VOCAB_PATH = os.path.join(BASE_PATH, 'vocab.txt')
 
-    def __init__(self, task: str, vocab_from_train: str):
-        self.vocab_from_train = vocab_from_train
+    def __init__(self, task: str, word2vec):
+        self.word2vec = word2vec
         self.train_path = os.path.join(self.BASE_PATH, task, 'train')
-        if self.vocab_from_train:
-            self.words, self.labels = self.get_unique(self.train_path)
-        else:
+        if self.word2vec:
             _, self.labels = self.get_unique(self.train_path)
             self.words = self.get_word2vec_words()
+        else:
+            self.words, self.labels = self.get_unique(self.train_path)
+
         self.vocab_size = len(self.words)
         self.num_of_labels = len(self.labels)
         self.i2word = {i: w for i, w in enumerate(self.words)}
@@ -58,10 +59,12 @@ class Vocab:
         self.label2i = {l: i for i, l in self.i2label.items()}
 
     def get_word_index(self, word):
-        if not self.vocab_from_train:
+        if self.word2vec:
             word = word.lower()
+
         if word in self.word2i:
             return self.word2i[word]
+
         return self.word2i[self.UNKNOWN_WORD]
 
     def get_word2vec_words(self):
@@ -170,24 +173,22 @@ class DataFile(Dataset):
 class MLP(nn.Module):
     PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'data', 'wordVectors.txt')
 
-    def __init__(self, embedding_size: int, hidden_dim: int, vocab: Vocab, load_embedding=False):
+    def __init__(self, embedding_size: int, hidden_dim: int, vocab: Vocab):
         super(MLP, self).__init__()
         self.vocab = vocab
         self.hidden_dim = hidden_dim
         self.vocab_size = self.vocab.vocab_size
-        #init embediing using load
-        if load_embedding:
-            self.embed_dim = 50
+        self.embed_dim = embedding_size
+        self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)
+
+        # init embedding using word2vec
+        if self.vocab.word2vec:
             weights = np.loadtxt(self.PATH)
-            self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)
             self.embedding.weight.data.copy_(torch.from_numpy(weights))
-        else:
-            #init embediing using randomly
-            self.embed_dim = embedding_size
-            self.embedding = nn.Embedding(self.vocab_size, self.embed_dim)
-            self.linear1 = nn.Linear(self.embed_dim * 5, self.hidden_dim)
-            self.tanh = nn.Tanh()
-            self.linear2 = nn.Linear(self.hidden_dim, self.vocab.num_of_labels)
+
+        self.linear1 = nn.Linear(self.embed_dim * 5, self.hidden_dim)
+        self.tanh = nn.Tanh()
+        self.linear2 = nn.Linear(self.hidden_dim, self.vocab.num_of_labels)
 
     def forward(self, x):
         out = self.embedding(x)
