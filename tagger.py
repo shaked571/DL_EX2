@@ -235,7 +235,7 @@ class MLP(nn.Module):
         out = self.linear1(out)
         out = self.tanh(out)
         out = self.linear2(out)
-        out = nn.Softmax(out)
+        out = self.softmax(out)
 
         return out
 
