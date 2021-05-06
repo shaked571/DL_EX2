@@ -37,7 +37,7 @@ import os
 # saving all the loss to a tensorboardX + Adduracy and Recall
 # Add a function that create a file name for each run
 
-
+torch.manual_seed(1)
 class SubWords:
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
     SUB_WORD_SIZE = 3
@@ -296,8 +296,9 @@ class MLPSubWords(MLP):
 
 
 class Trainer:
+
     def __init__(self, model: nn.Module, train_data: DataFile, dev_data: DataFile, vocab: Vocab, n_ep=1,
-                 optimizer='AdamW', train_batch_size=8, steps_to_eval=4000, lr=0.01):
+                 optimizer='AdamW', train_batch_size=8, steps_to_eval=8000, lr=0.01):
         self.model = model
         self.dev_batch_size = 128
         self.train_data = DataLoader(train_data, batch_size=train_batch_size, shuffle=True)
@@ -317,7 +318,7 @@ class Trainer:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
         self.model_args = {"task":self.vocab.task ,"lr": lr, "epoch": self.n_epochs, "batch_size": train_batch_size,
-                           "steps_to_eval": self.steps_to_eval}
+                           "steps_to_eval": self.steps_to_eval,"optim":optimizer, "hidden_dim": self.model.hidden_dim}
         self.writer = SummaryWriter(log_dir=f"tensor_board/{self.suffix_run()}")
 
         self.saved_model_path = f"{self.suffix_run()}.bin"
@@ -360,29 +361,30 @@ class Trainer:
             self.evaluate_model(epoch, "epoch")
 
     def evaluate_model(self, step, stage):
-        self.model.eval()
-        loss = 0
+        with torch.no_grad():
+            self.model.eval()
+            loss = 0
 
-        prediction = []
-        all_target = []
-        for eval_step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data),
-                                              desc=f"dev step {step} loop"):
-            data = data.to(self.device)
-            target = target.to(self.device)
-            output = self.model(data)
+            prediction = []
+            all_target = []
+            for eval_step, (data, target) in tqdm(enumerate(self.dev_data), total=len(self.dev_data),
+                                                  desc=f"dev step {step} loop"):
+                data = data.to(self.device)
+                target = target.to(self.device)
+                output = self.model(data)
 
-            loss = self.loss_func(output, target.view(-1))
-            loss += loss.item() * data.size(0)
-            _, predicted = torch.max(output, 1)
-            prediction += predicted.tolist()
-            all_target += target.view(-1).tolist()
-        accuracy = self.accuracy_token_tag(prediction, all_target)
-        print(f'Accuracy/dev_{stage}: {accuracy}')
-        self.writer.add_scalar(f'Accuracy/dev_{stage}', accuracy, step)
-        self.writer.add_scalar(f'Loss/dev_{stage}', loss, step)
-        if accuracy > self.best_score:
-            self.best_score = accuracy
-            torch.save(self.model.state_dict(), self.saved_model_path)
+                loss = self.loss_func(output, target.view(-1))
+                loss += loss.item() * data.size(0)
+                _, predicted = torch.max(output, 1)
+                prediction += predicted.tolist()
+                all_target += target.view(-1).tolist()
+            accuracy = self.accuracy_token_tag(prediction, all_target)
+            print(f'Accuracy/dev_{stage}: {accuracy}')
+            self.writer.add_scalar(f'Accuracy/dev_{stage}', accuracy, step)
+            self.writer.add_scalar(f'Loss/dev_{stage}', loss, step)
+            if accuracy > self.best_score:
+                self.best_score = accuracy
+                torch.save(self.model.state_dict(), self.saved_model_path)
 
         self.model.train()
 
