@@ -38,6 +38,8 @@ import os
 # Add a function that create a file name for each run
 
 torch.manual_seed(1)
+
+
 class SubWords:
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
     SUB_WORD_SIZE = 3
@@ -45,6 +47,7 @@ class SubWords:
     UNKNOWN_SUB_WORD = "UNKNOW_SUB_WORD"
 
     def __init__(self, task: str):
+        self.separator = " " if task == "pos" else "\t"
         self.train_path = os.path.join(self.BASE_PATH, task, 'train')
         self.suffix, self.prefix = self.get_prefix_and_suffix()
 
@@ -83,7 +86,7 @@ class SubWords:
         for line in lines:
             if line == "" or line == "\n":
                 continue
-            word, _ = line.strip().split("\t")
+            word, _ = line.strip().split(self.separator)
 
             if len(word) < self.SUB_WORD_SIZE:
                 continue
@@ -101,8 +104,10 @@ class Vocab:
     VOCAB_PATH = os.path.join(BASE_PATH, 'vocab.txt')
 
     def __init__(self, task: str, word2vec):
+        self.task = task
+        self.separator = " " if self.task == "pos" else "\t"
         self.word2vec = word2vec
-        self.train_path = os.path.join(self.BASE_PATH, task, 'train')
+        self.train_path = os.path.join(self.BASE_PATH, self.task, 'train')
         if self.word2vec:
             _, self.labels = self.get_unique(self.train_path)
             self.words = self.get_word2vec_words()
@@ -115,7 +120,6 @@ class Vocab:
         self.word2i = {w: i for i, w in self.i2word.items()}
         self.i2label = {i: l for i, l in enumerate(self.labels)}
         self.label2i = {l: i for i, l in self.i2label.items()}
-        self.task = task
 
     def get_word_index(self, word):
         if self.word2vec:
@@ -143,7 +147,7 @@ class Vocab:
         for line in lines:
             if line == "" or line == "\n":
                 continue
-            word, label = line.strip().split("\t")
+            word, label = line.strip().split(self.separator)
             words.add(word)
             labels.add(label)
         words.update(["</s>", "<s>", self.UNKNOWN_WORD])
@@ -170,6 +174,8 @@ class DataFile(Dataset):
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
     def __init__(self, task: str, data_set, pre_processor: PreProcessor, vocab: Vocab, sub_words: SubWords = None):
+        self.task = task
+        self.separator = " " if self.task == "pos" else "\t"
         self.data_path = os.path.join(self.BASE_PATH, task, data_set)
         self.pre_processor: PreProcessor = pre_processor
         self.vocab: Vocab = vocab
@@ -185,7 +191,7 @@ class DataFile(Dataset):
                     sentences.append(sent)
                     sent = []
             else:
-                sent.append(line.strip().split("\t"))
+                sent.append(line.strip().split(self.separator))
         return sentences
 
     def read_examples_from_file(self):
@@ -429,7 +435,7 @@ class Trainer:
             if line == "" or line == "\n":
                 res.append(line)
             else:
-                pred = f"{line.strip()}\t{test_prediction[cur_i]}\n"
+                pred = f"{line.strip()}{self.vocab.separator}{test_prediction[cur_i]}\n"
                 res.append(pred)
                 cur_i += 1
         pred_path = f"{self.suffix_run()}.tsv"

@@ -1,7 +1,7 @@
 #!/bin/bash
 which python
 
-for part in 1 3
+for part in 1 3 4
 do
  for task in ner pos
  do

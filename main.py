@@ -6,12 +6,12 @@ from preprocessing import TitleProcess
 def main(task, part, optimizer, batch_size, l_r, hidden_dim):
     embedding_dim = 50
     word2vec = False
-    sub_words = None
     if part == 3:
         word2vec = True
 
     vocab = Vocab(task, word2vec)
 
+    sub_words = None
     if part == 4:
         sub_words = SubWords(task)
         model = MLPSubWords(embedding_dim, hidden_dim, vocab, sub_words)
@@ -40,7 +40,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--task', type=str, required=True)
     parser.add_argument('--part', type=int, required=True)
-    parser.add_argument('--embedding_dim', type=int, required=False)
     parser.add_argument('--optimizer', type=str, required=False)
     parser.add_argument('--batch_size', type=int, required=False)
     parser.add_argument('--l_r', type=float, required=False)
