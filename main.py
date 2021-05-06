@@ -16,7 +16,14 @@ def main(task, part,optimizer, batch_size, l_r, hidden_dim):
     dev_df = DataFile(task, 'dev', title_process, vocab)
     test_df = DataFile(task, 'test', title_process, vocab)
     model = MLP(embedding_dim, hidden_dim, vocab)
-    trainer = Trainer(model, train_df, dev_df, vocab, 15, optimizer,batch_size, l_r)
+    trainer = Trainer(model=model,
+                      train_data=train_df,
+                      dev_data=dev_df,
+                      vocab=vocab,
+                      n_ep=15,
+                      optimizer=optimizer,
+                      train_batch_size=batch_size,
+                      lr=l_r)
     trainer.train()
     test_prediction = trainer.test(test_df)
     trainer.dump_test_file(test_prediction, test_df.data_path)
@@ -34,4 +41,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(args.task, args.part, args.optimizer,args.batch_size, args.l_r, args.hidden_dim)
+    main(args.task, args.part, args.optimizer, args.batch_size, args.l_r, args.hidden_dim)

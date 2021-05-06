@@ -260,7 +260,7 @@ class Trainer:
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
         self.model_args = {"task":self.vocab.task ,"lr": lr, "epoch": self.n_epochs, "batch_size": train_batch_size,
-                           "steps_to_eval": self.steps_to_eval}
+                           "steps_to_eval": self.steps_to_eval,"optim":optimizer, "hidden_dim": self.model.hidden_dim}
         self.writer = SummaryWriter(log_dir=f"tensor_board/{self.suffix_run()}")
 
         self.saved_model_path = f"{self.suffix_run()}.bin"
