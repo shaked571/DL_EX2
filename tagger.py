@@ -383,7 +383,17 @@ class CnnMLPSubWords(MLP):
         self.char_embeddings = nn.Embedding(self.char_vocab.chars_num, self.char_embed_dim,
                                             padding_idx=self.char_vocab.char2i[self.char_vocab.PADDING])
 
-        self.conv1 = nn.Conv1d(in_channels=20,out_channels=self.filter_num,kernel_size=self.window_size)(out_chars[:,0,:,:,]).size()
+        nn.Conv2d(in_channels=5,out_channels=self.filter_num *5,kernel_size=self.window_size,stride=1,padding=1, groups=5)(out_chars).size()
+
+        nn.MaxPool2d(3)(nn.Conv2d(in_channels=5,out_channels=self.filter_num * 5,
+                                  kernel_size=self.window_size,
+                                  stride=1,padding=2, groups=5)(out_chars)).size()
+
+
+
+
+        self.conv1 = nn.Conv2d(in_channels=5,out_channels=self.filter_num,kernel_size=self.window_size)(out_chars[:,0,:,:,]).size()
+        nn.Conv2d(in_channels=5,out_channels=self.filter_num,kernel_size=self.window_size)(out_chars)
         self.conv1d = nn.Conv1d(in_channels=self.char_embed_dim,
                                 out_channels=self.char_embed_dim * self.filter_num,
                                 kernel_size=self.window_size)
@@ -399,10 +409,12 @@ class CnnMLPSubWords(MLP):
         # x size is (batch * 5 *21)
         words_tensor = x[:, :, -1]  # words_tensor size is (batch * 5 * 1 )
         out_word = self.embedding(words_tensor)
-
-        chars_tensor = x[:, :, :-1] # chars_tensor size is (batch * 5 * 20 )
+        nn.MaxPool3d(15,stride=(30,2,54))(nn.Conv2d(in_channels=5, out_channels=self.filter_num * 5, kernel_size=self.window_size,stride=1,padding=2, groups=5)(out_chars)).size()
+        nn.MaxPool3d(15,stride=(30,10,1))(nn.Conv2d(in_channels=5, out_channels=self.filter_num * 5, kernel_size=self.window_size,stride=1,padding=2, groups=5)(out_chars)).size()
+        nn.MaxPool3d(self.word_len, stride=(self.filter_num,3,3))(nn.Conv2d(in_channels=5, out_channels=self.filter_num * 5, kernel_size=self.window_size,stride=1,padding=2, groups=5)(out_chars)).size()
+        chars_tensor = x[:, :, :-1]  # chars_tensor size is (batch * 5 * 20 )
         out_chars = self.char_embeddings(chars_tensor)
-        out_chars = self.conv1d(out_chars)
+        out_chars = nn.MaxPool3d(self.word_len, stride=(self.filter_num,3,1))(nn.Conv2d(in_channels=5, out_channels=self.filter_num * 5, kernel_size=self.window_size,stride=1,padding=2, groups=5)(out_chars)).size()
         out_chars = self.relu(out_chars)
         out_chars = self.max_pool(out_chars)
 
