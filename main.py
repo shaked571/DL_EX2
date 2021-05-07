@@ -27,10 +27,11 @@ def main(task, part, optimizer, batch_size, l_r, hidden_dim):
                       train_data=train_df,
                       dev_data=dev_df,
                       vocab=vocab,
-                      n_ep=15,
+                      n_ep=7,
                       optimizer=optimizer,
                       train_batch_size=batch_size,
-                      lr=l_r)
+                      lr=l_r,
+                      part=part)
     trainer.train()
     test_prediction = trainer.test(test_df)
     trainer.dump_test_file(test_prediction, test_df.data_path)
