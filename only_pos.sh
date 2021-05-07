@@ -7,7 +7,7 @@ do
  do
     for hidden_dim in 200 300
     do
-      for optimizer in Adam AdamW
+      for optimizer in AdamW
       do
       for l_r in 0.01 0.001
       do
