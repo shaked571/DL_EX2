@@ -39,6 +39,54 @@ import os
 torch.manual_seed(1)
 
 
+class CharsVocab:
+    BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
+    PADDING = "PAD"
+    UNKNOWN_CHAR = "UNKNOWN_CHAR"
+    WORD_LEN = 20
+
+    def __init__(self, task: str):
+        self.separator = " " if task == "pos" else "\t"
+        self.train_path = os.path.join(self.BASE_PATH, task, 'train')
+        self.chars = self.get_chars()
+
+        self.chars_num = len(self.chars)
+
+        self.char2i = {c: i for i, c in enumerate(self.chars)}
+        self.i2char = {i: c for i, c in enumerate(self.chars)}
+
+    def get_chars_indexes_by_word(self, word):
+        word_chars = [c for c in word]
+        indexes = []
+
+        # add chars indexes
+        for c in word_chars[:self.WORD_LEN]:
+            if c in self.char2i:
+                indexes.append(self.char2i[c])
+            else:
+                indexes.append(self.char2i[self.UNKNOWN_CHAR])
+
+        # add padding indexes
+        for i in range(self.WORD_LEN - len(indexes)):
+            indexes.append(self.char2i[self.PADDING])
+
+        return indexes
+
+    def get_chars(self):
+        chars = {self.PADDING, self.UNKNOWN_CHAR}
+        with open(self.train_path) as f:
+            lines = f.readlines()
+
+        for line in lines:
+            if line == "" or line == "\n":
+                continue
+            word, _ = line.strip().split(self.separator)
+            chars.update([c for c in word])
+
+        return chars
+
+
+
 class SubWords:
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
     SUB_WORD_SIZE = 3
@@ -173,13 +221,16 @@ class DataFile(Dataset):
     WINDOW_SIZE = 5
     BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), 'data'))
 
-    def __init__(self, task: str, data_set, pre_processor: PreProcessor, vocab: Vocab, sub_words: SubWords = None):
+    def __init__(self, task: str, data_set, pre_processor: PreProcessor, vocab: Vocab,
+                 sub_words: SubWords = None,
+                 char_vocab: CharsVocab = None):
         self.task = task
         self.separator = " " if self.task == "pos" else "\t"
         self.data_path = os.path.join(self.BASE_PATH, task, data_set)
         self.pre_processor: PreProcessor = pre_processor
         self.vocab: Vocab = vocab
         self.sub_words = sub_words
+        self.char_vocab = char_vocab
         self.data: List[InputExample] = self.read_examples_from_file()
 
     def read_sents(self, lines):
@@ -246,7 +297,19 @@ class DataFile(Dataset):
             prefixes_tensor, suffixes_tensor = self.get_sub_words_tensor(words)
             words_tensor = torch.stack((words_tensor, prefixes_tensor, suffixes_tensor), dim=0)
 
+        elif self.char_vocab:
+            chars_tensor = self.get_chars_tensor(words)
+            words_tensor = torch.cat([chars_tensor, words_tensor.repeat(1)[:, None]], axis=1)
+
         return words_tensor, label_tensor
+
+    def get_chars_tensor(self, words):
+        chars_tensor = []  # 20 (num of chars in each word)* 5 (num of words) = 100
+        for word in words:
+            chars_indices = self.char_vocab.get_chars_indexes_by_word(word)
+            chars_tensor.append(chars_indices)
+        chars_tensor = torch.tensor(chars_tensor).to(torch.int64)
+        return chars_tensor
 
     def __len__(self):
         return len(self.data)
@@ -301,24 +364,69 @@ class MLPSubWords(MLP):
         return out
 
 
-
 class CnnMLPSubWords(MLP):
-    def __init__(self, embedding_size: int, hidden_dim: int, vocab: Vocab, sub_words: SubWords):
+    def __init__(self, embedding_size: int, hidden_dim: int, vocab: Vocab,
+                 char_embed_dim: int,
+                 filter_num: int,
+                 window_size: int,
+                 char_vocab: CharsVocab):
+
         super().__init__(embedding_size, hidden_dim, vocab)
-        self.sub_words = sub_words
-        self.prefix_embedding = nn.Embedding(self.sub_words.prefix_num, self.embed_dim)
-        self.suffix_embedding = nn.Embedding(self.sub_words.suffix_num, self.embed_dim)
+        self.char_vocab = char_vocab
+        self.char_embed_dim = char_embed_dim
+        self.filter_num = filter_num
+        self.word_len = self.char_vocab.WORD_LEN
+        self.window_size = window_size
+        self.conv_feature_len = self.word_len - self.window_size + 1
+        self.output_dim = self.char_embed_dim * self.filter_num
+
+        self.char_embeddings = nn.Embedding(self.char_vocab.chars_num, self.char_embed_dim,
+                                            padding_idx=self.char_vocab.char2i[self.char_vocab.PADDING])
+
+        self.conv1 = nn.Conv1d(in_channels=20,out_channels=self.filter_num,kernel_size=self.window_size)(out_chars[:,0,:,:,]).size()
+        self.conv1d = nn.Conv1d(in_channels=self.char_embed_dim,
+                                out_channels=self.char_embed_dim * self.filter_num,
+                                kernel_size=self.window_size)
+        self.relu = nn.LeakyReLU()
+        self.max_pool = nn.MaxPool1d(3)
+        self.dropout = torch.nn.Dropout(p=0.5)
+
+
+
+
 
     def forward(self, x):
-        out_word = self.embedding(x[torch.arange(x.size(0)), 0])
-        out_pre = self.prefix_embedding(x[torch.arange(x.size(0)), 1])
-        out_suf = self.suffix_embedding(x[torch.arange(x.size(0)), 2])
-        out = torch.stack((out_word, out_pre, out_suf), dim=0).sum(axis=0)
-        out = out.view(out.size(0), -1)
+        # x size is (batch * 5 *21)
+        words_tensor = x[:, :, -1]  # words_tensor size is (batch * 5 * 1 )
+        out_word = self.embedding(words_tensor)
+
+        chars_tensor = x[:, :, :-1] # chars_tensor size is (batch * 5 * 20 )
+        out_chars = self.char_embeddings(chars_tensor)
+        out_chars = self.conv1d(out_chars)
+        out_chars = self.relu(out_chars)
+        out_chars = self.max_pool(out_chars)
+
+        out = torch.cat()
+
+
+
+
+        # out = out.view(out.size(0), -1)
         out = self.linear1(out)
         out = self.tanh(out)
         out = self.linear2(out)
+
+
+
+
         return out
+
+
+
+
+
+
+
 
 
 class Trainer:
@@ -342,7 +450,7 @@ class Trainer:
         self.steps_to_eval = steps_to_eval
         self.n_epochs = n_ep
         self.loss_func = nn.CrossEntropyLoss()
-        self.device = 1 #"cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
         self.model_args = {"part": self.part, "task":self.vocab.task ,"lr": lr, "epoch": self.n_epochs, "batch_size": train_batch_size,
                            "steps_to_eval": self.steps_to_eval,"optim":optimizer, "hidden_dim": self.model.hidden_dim}

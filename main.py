@@ -1,10 +1,11 @@
 import argparse
-from tagger import MLP, Vocab, DataFile, Trainer, SubWords, MLPSubWords
+from tagger import MLP, Vocab, DataFile, Trainer, SubWords, MLPSubWords, CnnMLPSubWords, CharsVocab
 from preprocessing import TitleProcess
 
 
-def main(task, part, optimizer, batch_size, l_r, hidden_dim):
+def main(task, part, optimizer, batch_size, l_r, hidden_dim, filter_num, window_size):
     embedding_dim = 50
+    char_embedding_dim = 30
     word2vec = False
     if part == 3:
         word2vec = True
@@ -12,16 +13,20 @@ def main(task, part, optimizer, batch_size, l_r, hidden_dim):
     vocab = Vocab(task, word2vec)
 
     sub_words = None
+    char_vocab = None
     if part == 4:
         sub_words = SubWords(task)
         model = MLPSubWords(embedding_dim, hidden_dim, vocab, sub_words)
+    elif part == 5:
+        char_vocab = CharsVocab(task)
+        model = CnnMLPSubWords(embedding_dim, hidden_dim, vocab, char_embedding_dim, filter_num, window_size, char_vocab)
     else:
         model = MLP(embedding_dim, hidden_dim, vocab)
 
     title_process = TitleProcess()
-    train_df = DataFile(task, 'train', title_process, vocab, sub_words)
-    dev_df = DataFile(task, 'dev', title_process, vocab, sub_words)
-    test_df = DataFile(task, 'test', title_process, vocab, sub_words)
+    train_df = DataFile(task, 'train', title_process, vocab, sub_words, char_vocab)
+    dev_df = DataFile(task, 'dev', title_process, vocab, sub_words, char_vocab)
+    test_df = DataFile(task, 'test', title_process, vocab, sub_words, char_vocab)
 
     trainer = Trainer(model=model,
                       train_data=train_df,
@@ -45,7 +50,9 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, required=False)
     parser.add_argument('--l_r', type=float, required=False)
     parser.add_argument('--hidden_dim', type=int, required=True)
+    parser.add_argument('--filter_num', type=int, required=False)
+    parser.add_argument('--window_size', type=int, required=False)
 
     args = parser.parse_args()
 
-    main(args.task, args.part, args.optimizer, args.batch_size, args.l_r, args.hidden_dim)
+    main(args.task, args.part, args.optimizer, args.batch_size, args.l_r, args.hidden_dim, args.filter_num, args.window_size)
