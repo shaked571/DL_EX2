@@ -15,7 +15,6 @@ import numpy as np
 from preprocessing import PreProcessor
 import os
 
-
 # Read the files
 
 # Calculate Precision\Recall in NER and POS (count only tag != 'O')
@@ -323,7 +322,7 @@ class Trainer:
         self.steps_to_eval = steps_to_eval
         self.n_epochs = n_ep
         self.loss_func = nn.CrossEntropyLoss()
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = 1 #"cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
         self.model_args = {"part": self.part, "task":self.vocab.task ,"lr": lr, "epoch": self.n_epochs, "batch_size": train_batch_size,
                            "steps_to_eval": self.steps_to_eval,"optim":optimizer, "hidden_dim": self.model.hidden_dim}
