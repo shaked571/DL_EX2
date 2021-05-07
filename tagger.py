@@ -151,6 +151,7 @@ class Vocab:
             words.add(word)
             labels.add(label)
         words.update(["</s>", "<s>", self.UNKNOWN_WORD])
+        labels.add('O')
 
         return words, labels
 
