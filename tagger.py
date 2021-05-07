@@ -301,6 +301,26 @@ class MLPSubWords(MLP):
         return out
 
 
+
+class CnnMLPSubWords(MLP):
+    def __init__(self, embedding_size: int, hidden_dim: int, vocab: Vocab, sub_words: SubWords):
+        super().__init__(embedding_size, hidden_dim, vocab)
+        self.sub_words = sub_words
+        self.prefix_embedding = nn.Embedding(self.sub_words.prefix_num, self.embed_dim)
+        self.suffix_embedding = nn.Embedding(self.sub_words.suffix_num, self.embed_dim)
+
+    def forward(self, x):
+        out_word = self.embedding(x[torch.arange(x.size(0)), 0])
+        out_pre = self.prefix_embedding(x[torch.arange(x.size(0)), 1])
+        out_suf = self.suffix_embedding(x[torch.arange(x.size(0)), 2])
+        out = torch.stack((out_word, out_pre, out_suf), dim=0).sum(axis=0)
+        out = out.view(out.size(0), -1)
+        out = self.linear1(out)
+        out = self.tanh(out)
+        out = self.linear2(out)
+        return out
+
+
 class Trainer:
 
     def __init__(self, model: nn.Module, train_data: DataFile, dev_data: DataFile, vocab: Vocab, n_ep=1,
@@ -322,7 +342,7 @@ class Trainer:
         self.steps_to_eval = steps_to_eval
         self.n_epochs = n_ep
         self.loss_func = nn.CrossEntropyLoss()
-        self.device = 2 #"cuda" if torch.cuda.is_available() else "cpu"
+        self.device = 1 #"cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
         self.model_args = {"part": self.part, "task":self.vocab.task ,"lr": lr, "epoch": self.n_epochs, "batch_size": train_batch_size,
                            "steps_to_eval": self.steps_to_eval,"optim":optimizer, "hidden_dim": self.model.hidden_dim}
@@ -443,14 +463,3 @@ class Trainer:
         with open(pred_path, mode='w') as f:
             f.writelines(res)
 
-# if __name__ == '__main__':
-#     title_process = TitleProcess()
-#     vocab = Vocab(os.path.join('data','ner'))
-#     # train_df = DataFile(os.path.join('data','ner'), 'train', title_process, vocab)
-#     train_df = DataFile('data/ner/train', title_process, vocab)
-#     dev_df = DataFile('data/ner/dev', title_process,  vocab)
-#     test_df = DataFile('data/ner/test', title_process,  vocab)
-#     model = MLP(50, 100, vocab) #define how the network looks like
-#     # trainer = Tranier(model, train, 2)
-#     trainer = Tranier(model, train_df, dev_df,  vocab, 10)
-#     trainer.train()
