@@ -383,20 +383,20 @@ class CnnMLPSubWords(MLP):
         self.char_embeddings = nn.Embedding(self.char_vocab.chars_num, self.char_embed_dim,
                                             padding_idx=self.char_vocab.char2i[self.char_vocab.PADDING])
 
-        nn.Conv2d(in_channels=5,out_channels=self.filter_num *5,kernel_size=self.window_size,stride=1,padding=1, groups=5)(out_chars).size()
+        # nn.Conv2d(in_channels=5,out_channels=self.filter_num *5,kernel_size=self.window_size,stride=1,padding=1, groups=5)(out_chars).size()
+        #
+        # nn.MaxPool2d(3)(nn.Conv2d(in_channels=5,out_channels=self.filter_num * 5,
+        #                           kernel_size=self.window_size,
+        #                           stride=1,padding=2, groups=5)(out_chars)).size()
+        #
 
-        nn.MaxPool2d(3)(nn.Conv2d(in_channels=5,out_channels=self.filter_num * 5,
-                                  kernel_size=self.window_size,
-                                  stride=1,padding=2, groups=5)(out_chars)).size()
 
 
-
-
-        self.conv1 = nn.Conv2d(in_channels=5,out_channels=self.filter_num,kernel_size=self.window_size)(out_chars[:,0,:,:,]).size()
-        nn.Conv2d(in_channels=5,out_channels=self.filter_num,kernel_size=self.window_size)(out_chars)
-        self.conv1d = nn.Conv1d(in_channels=self.char_embed_dim,
-                                out_channels=self.char_embed_dim * self.filter_num,
-                                kernel_size=self.window_size)
+        # self.conv1 = nn.Conv2d(in_channels=5,out_channels=self.filter_num,kernel_size=self.window_size)(out_chars[:,0,:,:,]).size()
+        out_char  = nn.Conv2d(in_channels=5,out_channels=self.filter_num,kernel_size=self.window_size)(out_chars)
+        # self.conv1d = nn.Conv1d(in_channels=self.char_embed_dim,
+        #                         out_channels=self.char_embed_dim * self.filter_num,
+        #                         kernel_size=self.window_size)
         self.relu = nn.LeakyReLU()
         self.max_pool = nn.MaxPool1d(3)
         self.dropout = torch.nn.Dropout(p=0.5)
