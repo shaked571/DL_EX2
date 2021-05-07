@@ -359,7 +359,7 @@ class Trainer:
                 # update running training loss
                 train_loss += loss.item() * data.size(0)
                 step_loss += loss.item() * data.size(0)
-                if step % 4000 == 0:
+                if step % self.steps_to_eval == 0:
                     print(f"in step: {step} train loss: {step_loss}")
                     self.writer.add_scalar('Loss/train_step', step_loss, step * (epoch + 1))
                     step_loss = 0.0
