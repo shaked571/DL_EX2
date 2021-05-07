@@ -391,9 +391,8 @@ class CnnMLPSubWords(MLP):
         #
 
 
-
         # self.conv1 = nn.Conv2d(in_channels=5,out_channels=self.filter_num,kernel_size=self.window_size)(out_chars[:,0,:,:,]).size()
-        out_char  = nn.Conv2d(in_channels=5,out_channels=self.filter_num,kernel_size=self.window_size)(out_chars)
+        # out_char  = nn.Conv2d(in_channels=5,out_channels=self.filter_num,kernel_size=self.window_size)(out_chars)
         # self.conv1d = nn.Conv1d(in_channels=self.char_embed_dim,
         #                         out_channels=self.char_embed_dim * self.filter_num,
         #                         kernel_size=self.window_size)
@@ -411,10 +410,10 @@ class CnnMLPSubWords(MLP):
         out_word = self.embedding(words_tensor)
         nn.MaxPool3d(15,stride=(30,2,54))(nn.Conv2d(in_channels=5, out_channels=self.filter_num * 5, kernel_size=self.window_size,stride=1,padding=2, groups=5)(out_chars)).size()
         nn.MaxPool3d(15,stride=(30,10,1))(nn.Conv2d(in_channels=5, out_channels=self.filter_num * 5, kernel_size=self.window_size,stride=1,padding=2, groups=5)(out_chars)).size()
-        nn.MaxPool3d(self.word_len, stride=(self.filter_num,3,3))(nn.Conv2d(in_channels=5, out_channels=self.filter_num * 5, kernel_size=self.window_size,stride=1,padding=2, groups=5)(out_chars)).size()
         chars_tensor = x[:, :, :-1]  # chars_tensor size is (batch * 5 * 20 )
         out_chars = self.char_embeddings(chars_tensor)
-        out_chars = nn.MaxPool3d(self.word_len, stride=(self.filter_num,3,1))(nn.Conv2d(in_channels=5, out_channels=self.filter_num * 5, kernel_size=self.window_size,stride=1,padding=2, groups=5)(out_chars)).size()
+        out_chars = nn.MaxPool3d(self.word_len, stride=(self.filter_num,3,1))(nn.Conv2d(in_channels=5, out_channels=self.filter_num * 5,
+                                                                                        kernel_size=self.window_size,stride=1,padding=2, groups=5)(out_chars))
         out_chars = self.relu(out_chars)
         out_chars = self.max_pool(out_chars)
 
