@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader, Dataset
 import numpy as np
 from preprocessing import PreProcessor
 import os
-
+from math import sqrt
 # Read the files
 
 # Calculate Precision\Recall in NER and POS (count only tag != 'O')
@@ -383,12 +383,12 @@ class CnnMLPSubWords(MLP):
         self.linear_dims = {3: 315, 4: 310, 5: 305}
         self.char_embeddings = nn.Embedding(self.char_vocab.chars_num, self.char_embed_dim,
                                             padding_idx=self.char_vocab.char2i[self.char_vocab.PADDING])
-
+        self.char_embeddings.weight.data.uniform_(-sqrt(3/self.char_embed_dim), sqrt(3/self.char_embed_dim))
         self.conv = nn.Conv2d(in_channels=WINDOW_CONTEXT, out_channels=self.filter_num * WINDOW_CONTEXT, kernel_size=self.window_size, stride=1, padding=2, groups=WINDOW_CONTEXT)
         self.relu = nn.LeakyReLU()
         self.max_pool = nn.MaxPool3d(self.word_len, stride=(self.filter_num, self.window_size, 1))
         self.dropout = torch.nn.Dropout(p=0.5)
-        self.linear = nn.Linear(self.linear_dims[self.window_size], self.hidden_dim) # TODO generalize
+        self.linear = nn.Linear(self.linear_dims[self.window_size], self.hidden_dim)
 
     def forward(self, x):
         # x size is (batch * 5 *21)
