@@ -12,7 +12,7 @@ do
        --task pos \
        --part 5 \
        --optimizer AdamW \
-       --batch_size 32 \
+       --batch_size 128 \
        --hidden_dim 200 \
        --l_r 0.001 \
        --window_size $window_size \

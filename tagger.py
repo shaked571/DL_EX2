@@ -385,6 +385,7 @@ class CnnMLPSubWords(MLP):
                                             padding_idx=self.char_vocab.char2i[self.char_vocab.PADDING])
         self.char_embeddings.weight.data.uniform_(-sqrt(3/self.char_embed_dim), sqrt(3/self.char_embed_dim))
         self.conv = nn.Conv2d(in_channels=WINDOW_CONTEXT, out_channels=self.filter_num * WINDOW_CONTEXT, kernel_size=self.window_size, stride=1, padding=2, groups=WINDOW_CONTEXT)
+        # self.conv = nn.Conv2d(in_channels=WINDOW_CONTEXT, out_channels=self.filter_num, kernel_size=self.window_size, stride=1)
         self.relu = nn.LeakyReLU()
         self.max_pool = nn.MaxPool3d(self.word_len, stride=(self.filter_num, self.window_size, 1))
         self.dropout = torch.nn.Dropout(p=0.5)
