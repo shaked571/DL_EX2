@@ -403,7 +403,7 @@ class CnnMLPSubWords(MLP):
         out = torch.cat((out_chars, out_word), 2)
         out = out.view(out.size(0), -1)
         linear1 = nn.Linear(out.size()[1], self.hidden_dim)
-        linear1.to(self.device)
+        linear1.to("cuda" if torch.cuda.is_available() else "cpu")
         out = linear1(out)
         out = self.tanh(out)
         out = self.linear2(out)
