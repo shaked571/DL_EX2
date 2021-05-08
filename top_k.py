@@ -2,7 +2,6 @@ import numpy as np
 from numpy import dot
 from numpy.linalg import norm
 import argparse
-import pandas as pd
 
 class MostSimilar:
     def __init__(self, vectors_path, vocab_path, k):
@@ -30,15 +29,13 @@ class MostSimilar:
         cosine_all_words = np.apply_along_axis(cosine_on_w, axis=1, arr=self.vectors)
         cosine_with_index = [(k, v) for k, v in enumerate(cosine_all_words)]
         cosine_with_index.sort(key=lambda x: x[1], reverse=True)
-        top_k_words = [(self.i2word[ind] , cosine) for ind, cosine in cosine_with_index[1:self.k+1]] # not to take the first word
+        top_k_words = [(self.i2word[ind], cosine) for ind, cosine in cosine_with_index[1:self.k+1]] # not to take the first word
         return top_k_words
 
 
-
-
-def main(vectors_path, vocab_path, req_word, k, all):
+def main(vectors_path, vocab_path, req_word, k, all_words):
     ms = MostSimilar(vectors_path, vocab_path, k)
-    if all:
+    if all_words:
         words = "dog england john explode office".split()
     else:
         words = [req_word]
@@ -51,7 +48,6 @@ def main(vectors_path, vocab_path, req_word, k, all):
             print(f"sim word: {sim_word} cosine val: {cosine_val}")
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--vectors_path', type=str, default='data/wordVectors.txt', required=False)
@@ -59,7 +55,6 @@ if __name__ == "__main__":
     parser.add_argument('--word', type=str, required=False)
     parser.add_argument('--k', type=int, required=False)
     parser.add_argument('-a','--all' ,action='store_true')
-
 
     args = parser.parse_args()
 
