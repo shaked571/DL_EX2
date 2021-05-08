@@ -36,6 +36,8 @@ def main(task, part, optimizer, batch_size, l_r, hidden_dim, filter_num, window_
                       optimizer=optimizer,
                       train_batch_size=batch_size,
                       lr=l_r,
+                      filter_num=filter_num,
+                      window_size=window_size,
                       part=part)
     trainer.train()
     test_prediction = trainer.test(test_df)

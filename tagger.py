@@ -388,6 +388,7 @@ class CnnMLPSubWords(MLP):
         self.relu = nn.LeakyReLU()
         self.max_pool = nn.MaxPool3d(self.word_len, stride=(self.filter_num, self.window_size, 1))
         self.dropout = torch.nn.Dropout(p=0.5)
+        self.linear = nn.Linear(315, self.hidden_dim) # TODO generalize
 
     def forward(self, x):
         # x size is (batch * 5 *21)
@@ -400,15 +401,18 @@ class CnnMLPSubWords(MLP):
         out_chars = self.relu(out_chars)
         out_chars = self.max_pool(out_chars).transpose(2, 3)
         out_chars = torch.squeeze(out_chars, 3)
-        out = torch.cat()
-
+        out = torch.cat((out_chars, out_word), 2)
+        out = out.view(out.size(0), -1)
+        out = self.linear(out)
+        out = self.tanh(out)
+        out = self.linear2(out)
         return out
 
 
 class Trainer:
 
     def __init__(self, model: nn.Module, train_data: DataFile, dev_data: DataFile, vocab: Vocab, n_ep=1,
-                 optimizer='AdamW', train_batch_size=8, steps_to_eval=30000, lr=0.01 ,part=None):
+                 optimizer='AdamW', train_batch_size=8, steps_to_eval=30000, lr=0.01, filter_num=30, window_size=3, part=None):
         self.part = part
         self.model = model
         self.dev_batch_size = 128
@@ -428,8 +432,9 @@ class Trainer:
         self.loss_func = nn.CrossEntropyLoss()
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
-        self.model_args = {"part": self.part, "task":self.vocab.task ,"lr": lr, "epoch": self.n_epochs, "batch_size": train_batch_size,
-                           "steps_to_eval": self.steps_to_eval,"optim":optimizer, "hidden_dim": self.model.hidden_dim}
+        self.model_args = {"part": self.part, "task": self.vocab.task, "lr": lr, "epoch": self.n_epochs,
+                           "batch_size": train_batch_size, "filter_num": filter_num, "window_size": window_size,
+                           "steps_to_eval": self.steps_to_eval, "optim": optimizer, "hidden_dim": self.model.hidden_dim}
         self.writer = SummaryWriter(log_dir=f"tensor_board/{self.suffix_run()}")
 
         self.saved_model_path = f"{self.suffix_run()}.bin"
