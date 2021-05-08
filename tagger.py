@@ -380,7 +380,7 @@ class CnnMLPSubWords(MLP):
         self.window_size = window_size
         self.conv_feature_len = self.word_len - self.window_size + 1
         self.output_dim = self.char_embed_dim * self.filter_num
-
+        self.linear_dims = {3: 315, 4: 310, 5: 305}
         self.char_embeddings = nn.Embedding(self.char_vocab.chars_num, self.char_embed_dim,
                                             padding_idx=self.char_vocab.char2i[self.char_vocab.PADDING])
 
@@ -388,7 +388,7 @@ class CnnMLPSubWords(MLP):
         self.relu = nn.LeakyReLU()
         self.max_pool = nn.MaxPool3d(self.word_len, stride=(self.filter_num, self.window_size, 1))
         self.dropout = torch.nn.Dropout(p=0.5)
-        self.linear = nn.Linear(315, self.hidden_dim) # TODO generalize
+        self.linear = nn.Linear(self.linear_dims[self.window_size], self.hidden_dim) # TODO generalize
 
     def forward(self, x):
         # x size is (batch * 5 *21)

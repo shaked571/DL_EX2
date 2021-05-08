@@ -1,24 +1,21 @@
 #!/bin/bash
 which python
 
-for hidden_dim in 200 300
+for window_size in 3 4 5
 do
-  for l_r in 0.01 0.001
-  do
-   for batch_size in 16 32 128
+   for filter_num in 20 30 40
    do
      echo "Output:"
-      echo "part_5_task_pos_hiddendim${hidden_dim}_lr${l_r}_batch_size${batch_size}"
+      echo "part_5_task_pos_window_size_${window_size}_filter_num_${filter_num}"
 
        python main.py \
        --task pos \
        --part 5 \
        --optimizer AdamW \
-       --batch_size $batch_size \
-       --hidden_dim $hidden_dim \
-       --l_r $l_r \
-       --window_size 3 \
-       --filter_num 30
+       --batch_size 32 \
+       --hidden_dim 200 \
+       --l_r 0.001 \
+       --window_size $window_size \
+       --filter_num $filter_num
       done
-   done
  done
