@@ -1,0 +1,23 @@
+The code For parts 1,3,4,5 is under the file: tagger1.py
+to run the code First:
+activate a conda env Using
+conda create -n "myenv" python=3.8
+pip install -r requirements.txt
+
+Once you actiavte the env run:
+You will need to have the data files unzipped under data/pos and data/ner
+and have  preprocessing.py
+under the progarm base dir
+Task: {pos, ner}
+Part: {1,3,4,5}
+optimizer: {SGD, Adam, AdamW}
+batch_size: int
+l_r: float
+hidden_dim: int
+filter_num: (for part 5 only ) int
+window_size: (for part 5 only ) int
+
+The usage is as follow using standart argparse:
+main.py --task TASK --part PART [--optimizer OPTIMIZER] [--batch_size BATCH_SIZE] [--l_r L_R] --hidden_dim
+               HIDDEN_DIM [--filter_num FILTER_NUM] [--window_size WINDOW_SIZE]
+			   
