@@ -400,8 +400,12 @@ class CnnMLPSubWords(MLP):
         out_chars = self.relu(out_chars)
         out_chars = self.max_pool(out_chars).transpose(2, 3)
         out_chars = torch.squeeze(out_chars, 3)
-        out = torch.cat()
-
+        out = torch.cat((out_chars, out_word), 2)
+        out = out.view(out.size(0), -1)
+        linear1 = nn.Linear(out.size()[1], self.hidden_dim)
+        out = linear1(out)
+        out = self.tanh(out)
+        out = self.linear2(out)
         return out
 
 
