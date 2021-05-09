@@ -3,9 +3,11 @@ from tagger import MLP, Vocab, DataFile, Trainer, SubWords, MLPSubWords, CnnMLPS
 from preprocessing import TitleProcess
 
 
-def main(task, part, optimizer, batch_size, l_r, hidden_dim, filter_num, window_size):
+def main(task, part, optimizer, batch_size, l_r, hidden_dim):
     embedding_dim = 50
     char_embedding_dim = 30
+    filter_num = 30
+    window_size = 3
     word2vec = False
     if part == 3:
         word2vec = True
@@ -52,9 +54,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, required=False)
     parser.add_argument('--l_r', type=float, required=False)
     parser.add_argument('--hidden_dim', type=int, required=True)
-    parser.add_argument('--filter_num', type=int, required=False)
-    parser.add_argument('--window_size', type=int, required=False)
 
     args = parser.parse_args()
 
-    main(args.task, args.part, args.optimizer, args.batch_size, args.l_r, args.hidden_dim, args.filter_num, args.window_size)
+    main(args.task, args.part, args.optimizer, args.batch_size, args.l_r, args.hidden_dim)
