@@ -8,7 +8,7 @@ def main(task, part, optimizer, batch_size, l_r, hidden_dim):
     char_embedding_dim = 30
     filter_num = 30
     window_size = 3
-    word2vec = True
+    word2vec = False
     if part == 3:
         word2vec = True
 
