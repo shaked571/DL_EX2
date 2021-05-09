@@ -1,4 +1,4 @@
-for part in 1 3 4 5
+for part in 1 3 4
 do
      echo "Output:"
       echo "part_${part}_task_ner_window_size_5_filter_num_30"
