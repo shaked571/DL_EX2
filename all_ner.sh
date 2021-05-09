@@ -5,7 +5,7 @@ do
 
        python main.py \
        --task ner \
-       --part 5 \
+       --part ${part} \
        --optimizer AdamW \
        --batch_size 32 \
        --hidden_dim 200 \
