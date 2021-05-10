@@ -15,26 +15,7 @@ import numpy as np
 from preprocessing import PreProcessor
 import os
 from math import sqrt
-# Read the files
 
-# Calculate Precision\Recall in NER and POS (count only tag != 'O')
-
-# writing a cosine function
-# retrieval of most similar. (in the top_k.py file)
-
-# tecnique
-# Class of word embedding-with diffrent init options
-# Different schemes of representing words  -with a flag -
-#                                           pretrained vec
-#                                           random init
-#                                           a flag with or without subwords
-# How does the input looks like?
-
-#                                 CNN + num of filters window size}
-#                               3.1 Building the network architecture  MLP+TanH+Softmax
-#                               3.2 Building the CNN architecture - Max pooling, filters etc.
-# saving all the loss to a tensorboardX + Adduracy and Recall
-# Add a function that create a file name for each run
 
 WINDOW_CONTEXT = 5
 torch.manual_seed(1)
@@ -344,6 +325,13 @@ class MLP(nn.Module):
         out = self.linear2(out)
 
         return out
+
+
+    def load_model(self, path):
+        checkpoint = torch.load(path, map_location="cuda" if torch.cuda.is_available() else "cpu")
+        self.load_state_dict(checkpoint)
+
+
 
 
 class MLPSubWords(MLP):
